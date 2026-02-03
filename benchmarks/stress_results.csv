@@ -1,0 +1,3 @@
+name,rows,mean_ms,rows_per_sec
+<lambda>,2000000,1670.32,1197374.65
+<lambda>,2000000,6388.48,313063.55

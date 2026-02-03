@@ -1,0 +1,24 @@
+{
+  "version": "0.1",
+  "run_id": "run_20260203T043044170Z_0dd9ac",
+  "project": "load",
+  "dataset": "snapshot",
+  "created_at": "2026-02-03T04:30:44.170Z",
+  "finished_at": null,
+  "status": "running",
+  "tags": {},
+  "metadata": {},
+  "host": {
+    "hostname": "shakeebs-MacBook-Air.local",
+    "os": "posix",
+    "arch": "arm64"
+  },
+  "runtime": {
+    "python": "3.11.9",
+    "platform": "macOS-26.2-arm64-arm-64bit"
+  },
+  "steps": [],
+  "seal": {
+    "mode": "none"
+  }
+}

@@ -1,0 +1,4 @@
+[console_scripts]
+bb = bb.cli:app
+blackbox = blackbox.cli:main
+blackbox-pro = blackbox_pro.cli:main

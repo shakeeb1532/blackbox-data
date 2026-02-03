@@ -1,0 +1,80 @@
+[
+  {
+    "name": "content_fingerprint_rowhash",
+    "n_rows": 100000,
+    "n_cols": 5,
+    "runs": 3,
+    "warmup": 1,
+    "min_ms": 51.4787919819355,
+    "max_ms": 52.70099997869693,
+    "mean_ms": 51.960527654349185,
+    "median_ms": 51.70179100241512,
+    "p95_ms": 51.70179100241512,
+    "rows_per_sec": 1924537.8081073014
+  },
+  {
+    "name": "diff_rowhash",
+    "n_rows": 100000,
+    "n_cols": 5,
+    "runs": 3,
+    "warmup": 1,
+    "min_ms": 172.0890410069842,
+    "max_ms": 173.3432910114061,
+    "mean_ms": 172.55197167590572,
+    "median_ms": 172.22358300932683,
+    "p95_ms": 172.22358300932683,
+    "rows_per_sec": 579535.5395174745
+  },
+  {
+    "name": "snapshot_maybe_write_df_artifact",
+    "n_rows": 100000,
+    "n_cols": 5,
+    "runs": 3,
+    "warmup": 1,
+    "min_ms": 49.100666015874594,
+    "max_ms": 136.98733298224397,
+    "mean_ms": 82.23137467090662,
+    "median_ms": 60.606125014601275,
+    "p95_ms": 60.606125014601275,
+    "rows_per_sec": 1216080.8499213853
+  },
+  {
+    "name": "content_fingerprint_rowhash",
+    "n_rows": 1000000,
+    "n_cols": 5,
+    "runs": 3,
+    "warmup": 1,
+    "min_ms": 560.9754590259399,
+    "max_ms": 585.4468340112362,
+    "mean_ms": 575.1337366818916,
+    "median_ms": 578.9789170084987,
+    "p95_ms": 578.9789170084987,
+    "rows_per_sec": 1738726.0322603947
+  },
+  {
+    "name": "diff_rowhash",
+    "n_rows": 1000000,
+    "n_cols": 5,
+    "runs": 3,
+    "warmup": 1,
+    "min_ms": 2485.3898329893127,
+    "max_ms": 2818.337332981173,
+    "mean_ms": 2602.2710829953817,
+    "median_ms": 2503.08608301566,
+    "p95_ms": 2503.08608301566,
+    "rows_per_sec": 384279.71879429853
+  },
+  {
+    "name": "snapshot_maybe_write_df_artifact",
+    "n_rows": 1000000,
+    "n_cols": 5,
+    "runs": 3,
+    "warmup": 1,
+    "min_ms": 578.4975420101546,
+    "max_ms": 659.6893749956507,
+    "mean_ms": 617.0068473438732,
+    "median_ms": 612.8336250258144,
+    "p95_ms": 612.8336250258144,
+    "rows_per_sec": 1620727.5564361366
+  }
+]

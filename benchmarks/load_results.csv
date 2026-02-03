@@ -1,0 +1,4 @@
+name,iterations,rows,mean_ms,rows_per_sec
+content_fingerprint_rowhash_load,5,1000000,577.26,1732320.16
+diff_rowhash_load,5,1000000,2437.14,410317.63
+snapshot_maybe_write_df_artifact_load,3,1000000,288.47,3466598.20

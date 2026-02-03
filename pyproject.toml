@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "blackbox-data"
+version = "0.1.0"
+description = "Forensic recorder for Pandas data pipelines (closed MVP)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Salman Shakeeb" }]
+dependencies = [
+  "pandas>=2.0",
+  "pyarrow>=14.0",
+  "typer>=0.9",
+  "rich>=13.0",
+]
+
+[project.optional-dependencies]
+s3 = [
+  "boto3>=1.28",
+]
+pro = [
+  "fastapi>=0.110",
+  "uvicorn>=0.27",
+  "python-multipart>=0.0.9",
+]
+
+[project.scripts]
+bb = "bb.cli:app"
+blackbox = "blackbox.cli:main"
+blackbox-pro = "blackbox_pro.cli:main"
+
+[project.urls]
+Repository = "https://github.com/shakeeb1532/blackbox-data"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["blackbox*", "blackbox_pro*", "bb*"]
+

@@ -1,0 +1,80 @@
+[
+  {
+    "name": "content_fingerprint_rowhash",
+    "n_rows": 100000,
+    "n_cols": 5,
+    "runs": 3,
+    "warmup": 1,
+    "min_ms": 44.10812500282191,
+    "max_ms": 45.073082990711555,
+    "mean_ms": 44.44129166464942,
+    "median_ms": 44.142667000414804,
+    "p95_ms": 44.142667000414804,
+    "rows_per_sec": 2250159.620800231
+  },
+  {
+    "name": "diff_rowhash",
+    "n_rows": 100000,
+    "n_cols": 5,
+    "runs": 3,
+    "warmup": 1,
+    "min_ms": 171.68629198567942,
+    "max_ms": 189.7682499838993,
+    "mean_ms": 178.05726399334768,
+    "median_ms": 172.71725001046434,
+    "p95_ms": 172.71725001046434,
+    "rows_per_sec": 561617.0761993516
+  },
+  {
+    "name": "snapshot_maybe_write_df_artifact",
+    "n_rows": 100000,
+    "n_cols": 5,
+    "runs": 3,
+    "warmup": 1,
+    "min_ms": 45.19095900468528,
+    "max_ms": 46.35770901222713,
+    "mean_ms": 45.913167006801814,
+    "median_ms": 46.190833003493026,
+    "p95_ms": 46.190833003493026,
+    "rows_per_sec": 2178024.443079378
+  },
+  {
+    "name": "content_fingerprint_rowhash",
+    "n_rows": 1000000,
+    "n_cols": 5,
+    "runs": 3,
+    "warmup": 1,
+    "min_ms": 566.1483749863692,
+    "max_ms": 677.3807079880498,
+    "mean_ms": 638.7909026622461,
+    "median_ms": 672.8436250123195,
+    "p95_ms": 672.8436250123195,
+    "rows_per_sec": 1565457.4851212923
+  },
+  {
+    "name": "diff_rowhash",
+    "n_rows": 1000000,
+    "n_cols": 5,
+    "runs": 3,
+    "warmup": 1,
+    "min_ms": 2545.4648330050986,
+    "max_ms": 2716.6923339827918,
+    "mean_ms": 2643.474944663467,
+    "median_ms": 2668.2676670025103,
+    "p95_ms": 2668.2676670025103,
+    "rows_per_sec": 378289.9482436014
+  },
+  {
+    "name": "snapshot_maybe_write_df_artifact",
+    "n_rows": 1000000,
+    "n_cols": 5,
+    "runs": 3,
+    "warmup": 1,
+    "min_ms": 599.1433750023134,
+    "max_ms": 626.5702499949839,
+    "mean_ms": 608.6304723382151,
+    "median_ms": 600.1777920173481,
+    "p95_ms": 600.1777920173481,
+    "rows_per_sec": 1643033.0807431235
+  }
+]

@@ -1,0 +1,222 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Blackbox Data Pro – UI Preview</title>
+    <style>
+    :root{
+      --bg: #05060a;
+      --panel: #0b0f1a;
+      --panel2: #0f1422;
+      --text: #f8fafc;
+      --muted: #b7c1d6;
+      --line: rgba(248,250,252,0.14);
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --info: #38bdf8;
+      --chip: rgba(248,250,252,0.08);
+      --shadow: 0 16px 32px rgba(0,0,0,0.45);
+      --mono: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: "IBM Plex Sans", "Avenir Next", "Helvetica Neue", "Segoe UI", sans-serif;
+      --accent: #38bdf8;
+      --accent2: #22c55e;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: var(--sans);
+      background:
+        radial-gradient(1200px 700px at 15% -10%, rgba(56,189,248,0.20), transparent 40%),
+        radial-gradient(900px 700px at 85% -5%, rgba(34,197,94,0.18), transparent 45%),
+        linear-gradient(180deg, rgba(2,6,23,0.65), rgba(2,6,23,0.00)),
+        var(--bg);
+      color: var(--text);
+      letter-spacing: 0.2px;
+    }
+    a{ color: inherit; text-decoration:none; }
+    a:hover{ text-decoration: underline; }
+    .topbar{
+      position: sticky;
+      top:0;
+      z-index: 100;
+      backdrop-filter: blur(16px);
+      background: rgba(5,6,10,0.85);
+      border-bottom: 1px solid var(--line);
+    }
+    .wrap{ max-width: 1200px; margin: 0 auto; padding: 18px; }
+    .brand{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+    }
+    .brand h1{
+      margin:0;
+      font-size: 15px;
+      letter-spacing: 0.6px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .brand small{ color: var(--muted); font-weight:600; }
+    .logo-dot{
+      width:10px;height:10px;border-radius:999px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display:inline-block; margin-right:10px;
+      box-shadow: 0 0 0 4px rgba(56,189,248,0.20);
+    }
+    .actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .btn{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:9px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(248,250,252,0.08);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+      font-weight: 700;
+      font-size: 12.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .btn:hover{ background: rgba(248,250,252,0.18); text-decoration:none; }
+    .content{ padding: 18px; }
+    .grid{ display:grid; grid-template-columns: 1.3fr 0.7fr; gap: 14px; }
+    .card{
+      background: rgba(11,15,26,0.92);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+    .card h2{ margin: 0 0 10px 0; font-size: 14px; letter-spacing: 0.2px; }
+    .muted{ color: var(--muted); }
+    .chips{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .badge{
+      font-weight: 750;
+      font-size: 12px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(248,250,252,0.12);
+      display:inline-flex; align-items:center; gap:6px;
+    }
+    .badge-ok{ color: var(--ok); }
+    .badge-warn{ color: var(--warn); }
+    .badge-bad{ color: var(--bad); }
+    .badge-info{ color: var(--info); }
+    .badge-muted{ color: var(--muted); }
+    .kv{ display:flex; justify-content:space-between; gap:12px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+    .kv:last-child{ border-bottom: none; }
+    .k{ color: var(--muted); font-weight: 650; font-size: 12px; }
+    .v{ font-weight: 700; font-size: 12.5px; text-align:right; overflow-wrap:anywhere; }
+    .steps{ display:flex; flex-direction:column; gap:12px; }
+    details{ border: 1px solid var(--line); border-radius: 14px; background: rgba(248,250,252,0.08); overflow: hidden; }
+    details[open]{ background: rgba(248,250,252,0.12); }
+    summary{ list-style:none; cursor:pointer; padding: 12px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; user-select:none; }
+    summary::-webkit-details-marker{ display:none; }
+    .step-left{ display:flex; gap:10px; align-items:center; min-width: 0; }
+    .num{ width:28px; height:28px; border-radius:10px; display:flex; align-items:center; justify-content:center; background: rgba(56,189,248,0.22); border: 1px solid var(--line); font-weight: 900; font-size: 12px; flex: 0 0 auto; }
+    .step-title{ font-weight: 850; font-size: 13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .step-meta{ display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+    .step-body{ padding: 0 12px 12px 12px; }
+    .code{ font-family: var(--mono); font-size: 12px; line-height: 1.45; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(2,6,23,0.78); overflow:auto; max-height: 520px; }
+    .footer{ padding: 18px 0 30px; color: var(--muted); font-size: 12px; text-align:center; }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="wrap brand">
+        <div>
+          <h1><span class="logo-dot"></span>Blackbox Data Pro <small>preview</small></h1>
+          <div class="muted" style="font-size:12px;margin-top:2px;">Forensic audit trail & diff intelligence</div>
+        </div>
+        <div class="actions">
+          <a class="btn" href="#">Docs</a>
+          <a class="btn" href="#">OpenAPI</a>
+          <a class="btn" href="#">Report Guide</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap content">
+      <div class="grid">
+        <div>
+          <div class="card">
+            <h2>Pipeline timeline</h2>
+            <div class="steps">
+              <details open>
+                <summary>
+                  <div class="step-left">
+                    <div class="num">1</div>
+                    <div style="min-width:0;">
+                      <div class="step-title">normalize</div>
+                      <div class="muted" style="font-size:12px;margin-top:2px;">rows: 120000 → 120000 | cols: 5 → 5</div>
+                    </div>
+                  </div>
+                  <div class="step-meta">
+                    <span class="badge badge-ok">ok</span>
+                    <span class="badge badge-warn">attention</span>
+                    <span class="badge badge-info">summary_only_high_churn</span>
+                    <span class="badge badge-muted">schema +0 −0 Δdtype:0</span>
+                    <span class="badge badge-muted">rows +0 −0 Δ120000</span>
+                  </div>
+                </summary>
+                <div class="step-body">
+                  <div class="code">{
+  "ordinal": 1,
+  "name": "normalize",
+  "status": "ok",
+  "schema_diff": {"added_cols": [], "removed_cols": [], "dtype_changed": []},
+  "diff": {"summary": {"added": 0, "removed": 0, "changed": 120000}, "ui_hint": "summary_only_high_churn"}
+}</div>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <h2>Run summary</h2>
+            <div class="chips">
+              <span class="badge badge-ok">ok</span>
+              <span class="badge badge-ok">verified</span>
+              <span class="badge badge-muted">steps: 3</span>
+            </div>
+            <div style="margin-top:10px;">
+              <div class="kv"><div class="k">Project</div><div class="v">acme-data</div></div>
+              <div class="kv"><div class="k">Dataset</div><div class="v">mvp_eval</div></div>
+              <div class="kv"><div class="k">Run ID</div><div class="v">run_20260203_abcdef</div></div>
+              <div class="kv"><div class="k">Created</div><div class="v">2026-02-03 09:12 UTC</div></div>
+              <div class="kv"><div class="k">Finished</div><div class="v">2026-02-03 09:15 UTC</div></div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:14px;">
+            <h2>Report Summary</h2>
+            <div class="muted" style="font-size:12.5px;line-height:1.6;">
+              Run completed with 3 steps. Row-level changes: +250 / -300 / Δ400. Schema changes are visible in the step badges. Review hints for summarized or skipped diffs.
+            </div>
+            <div class="chips" style="margin-top:12px;">
+              <span class="badge badge-info">summary_only_high_churn</span>
+              <span class="badge badge-info">diff_skipped_fingerprint_match</span>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:14px;">
+            <h2>How to Read This</h2>
+            <div class="muted" style="font-size:12.5px;line-height:1.6;">
+              <strong>Schema:</strong> column additions/removals and dtype changes.<br/>
+              <strong>Rows:</strong> added/removed/changed primary keys.<br/>
+              <strong>Hints:</strong> badges explain why a diff is summarized or skipped.
+            </div>
+            <div class="chips" style="margin-top:12px;">
+              <span class="badge badge-info">summary_only_high_churn</span>
+              <span class="badge badge-info">diff_skipped_fingerprint_match</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">Blackbox Data Pro – UI preview</div>
+    </div>
+  </body>
+</html>
