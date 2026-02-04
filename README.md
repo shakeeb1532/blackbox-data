@@ -29,6 +29,11 @@ python3 -m pip install -U pip
 python3 -m pip install -e ".[pro]"
 ```
 
+Warehouse adapters:
+```bash
+python3 -m pip install -e ".[pro,warehouse]"
+```
+
 ```python
 import pandas as pd
 from blackbox import Recorder, Store, DiffConfig, SnapshotConfig, SealConfig, RecorderConfig
@@ -114,11 +119,20 @@ Environment variables:
 - `BLACKBOX_PRO_TOKENS`: multi-tenant tokens (`role@tenant1|tenant2:token`)
 - `BLACKBOX_PRO_ROOT`: store root path
 - `BLACKBOX_PRO_TOKEN_FILE`: read token(s) from file
+ - `BLACKBOX_PRO_OIDC_ISSUER`: OIDC issuer URL (Auth0/Okta/Azure AD)
+ - `BLACKBOX_PRO_OIDC_AUDIENCE`: OIDC audience
+ - `BLACKBOX_PRO_OIDC_JWKS_URL`: override JWKS URL
+ - `BLACKBOX_WAREHOUSE_CONFIG`: warehouse config YAML path
 
 ## Security Model
 - API uses Bearer token auth; UI routes accept `?token=` for convenience.
 - Treat tokens as secrets; scope tokens to tenants when possible.
 - Evidence bundles + audit hash chains provide tamper-evident integrity.
+
+## Enterprise Extensions
+- OIDC/JWT auth + multi-tenant RBAC
+- Warehouse adapters (Snowflake, BigQuery, Redshift, Postgres/MySQL)
+- Usage dashboards (`/ui/metrics`)
 
 ## Versioning
 Semantic-ish versioning with release notes in `CHANGELOG.md`.
@@ -161,3 +175,4 @@ Run the full suite with:
 ```bash
 .venv/bin/python -m pytest
 ```
+- Policy controls: max run size, prod verification, retention windows (see `RecorderConfig`)

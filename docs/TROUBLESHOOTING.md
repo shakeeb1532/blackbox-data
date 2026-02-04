@@ -49,3 +49,10 @@ Fix:
 blackbox gpg-list
 blackbox gpg-import --path /path/to/key.asc
 ```
+
+## Retention cleanup
+Use the cleanup command to enforce retention windows:
+```bash
+blackbox --root ./.blackbox_store cleanup --retention-days 30
+```
+Use `--dry-run` to preview deletions.

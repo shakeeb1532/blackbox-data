@@ -12,7 +12,13 @@ export BLACKBOX_PRO_TOKENS="admin@acme-data:admin-token,viewer@acme-data|beta:vi
 ```
 
 ## OIDC JWT (optional)
-If you want OIDC‑style tokens, provide a public key:
+If you want OIDC‑style tokens, you can use issuer + JWKS:
+```bash
+export BLACKBOX_PRO_OIDC_ISSUER="https://your-issuer/"
+export BLACKBOX_PRO_OIDC_AUDIENCE="api://blackbox"
+```
+
+Or provide a public key directly:
 ```bash
 export BLACKBOX_PRO_JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
 export BLACKBOX_PRO_JWT_ALGORITHMS="RS256,HS256"

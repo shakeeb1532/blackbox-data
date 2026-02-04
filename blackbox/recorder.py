@@ -3,14 +3,18 @@ from dataclasses import dataclass
 from typing import Any
 import traceback
 import uuid
+import logging
+import os
 
 import pandas as pd
 
 from .config import DiffConfig, SnapshotConfig, SealConfig, RecorderConfig
-from .store import Store
+from .store import Store, LocalStore
 from .util import utc_now_iso, get_host_info, get_runtime_info, safe_path_component
 from .hashing import schema_fingerprint, content_fingerprint_rowhash, diff_rowhash, schema_diff
 from .seal import payload_digest, chain_digest, verify_chain_with_payloads
+
+_logger = logging.getLogger("blackbox")
 
 
 def _safe_name(s: str) -> str:
@@ -56,6 +60,13 @@ class StepContext:
 
         if self.run.recorder.config.enforce_explicit_output and exc_type is None and self._output_df is None:
             raise RuntimeError("Step finished without capture_output(df). v0.1 requires explicit output capture.")
+
+        # Normalize dataframe-like inputs to pandas
+        from .engines import to_pandas, is_dataframe_like
+        if self.input_df is not None and is_dataframe_like(self.input_df):
+            self.input_df = to_pandas(self.input_df)
+        if self._output_df is not None and is_dataframe_like(self._output_df):
+            self._output_df = to_pandas(self._output_df)
 
         step_key = self.run._step_prefix(self.ordinal, self.name)
         artifacts_prefix = f"{step_key}/artifacts"
@@ -221,6 +232,15 @@ class Recorder:
         )
         run._init_run()
         return run
+
+    def start_stream(
+        self,
+        run_id: str | None = None,
+        tags: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "StreamRun":
+        run = self.start_run(run_id=run_id, tags=tags, metadata=metadata)
+        return StreamRun(run)
 
 
 @dataclass
@@ -403,6 +423,9 @@ class Run:
                - DO NOT Parquet-serialize full df
           4) Else serialize to Parquet and store.
         """
+        from .engines import to_pandas
+        if not isinstance(df, pd.DataFrame):
+            df = to_pandas(df)
         fp = self._df_fingerprints(df)
         mode = self.recorder.snapshot.mode
         max_mb = float(self.recorder.snapshot.max_mb)
@@ -570,6 +593,43 @@ class Run:
         if error:
             run_summary["error"] = error
 
+        # Policy checks (enterprise)
+        policy: dict[str, Any] = run_summary.get("policy") or {}
+        violations: list[str] = policy.get("violations", [])
+
+        # Max run size enforcement (LocalStore only)
+        max_run_mb = self.recorder.config.max_run_mb
+        if isinstance(self.store, LocalStore) and max_run_mb:
+            try:
+                total_bytes = 0
+                for key in self.store.list(self._prefix()):
+                    path = self.store._path(key)
+                    if os.path.exists(path):
+                        total_bytes += os.path.getsize(path)
+                total_mb = total_bytes / (1024 * 1024)
+                policy["total_run_mb"] = round(total_mb, 3)
+                policy["max_run_mb"] = float(max_run_mb)
+                if total_mb > float(max_run_mb):
+                    violations.append("max_run_size_exceeded")
+            except Exception as e:
+                _logger.debug("Failed to compute run size: %s", e)
+
+        # Require verification for production runs
+        if self.recorder.config.require_verify_for_prod:
+            env = (self.tags or {}).get("env")
+            if env in ("prod", "production"):
+                ok, msg = self.verify()
+                policy["prod_verify_ok"] = bool(ok)
+                policy["prod_verify_message"] = msg
+                if not ok:
+                    violations.append("prod_verification_failed")
+                    run_summary["status"] = "verify_failed"
+
+        if violations:
+            policy["violations"] = sorted(set(violations))
+        if policy:
+            run_summary["policy"] = policy
+
         step_keys = self.store.list(f"{self._prefix()}/steps")
         step_jsons = [k for k in step_keys if k.endswith("/step.json")]
         step_jsons.sort()
@@ -609,3 +669,44 @@ class Run:
         chain_obj = self.store.get_json(self._chain_key())
         ok, msg = verify_chain_with_payloads(chain_obj, self.store, run_prefix=self._prefix())
         return ok, msg
+
+
+class StreamRun:
+    """
+    Minimal streaming helper for micro-batch pipelines.
+    Each batch is recorded as a step, diffed against the previous batch output.
+    """
+
+    def __init__(self, run: Run) -> None:
+        self._run = run
+        self._batch_index = 0
+        self._last_df: pd.DataFrame | None = None
+
+    @property
+    def run_id(self) -> str:
+        return self._run.run_id
+
+    def push(
+        self,
+        step: str,
+        df: pd.DataFrame,
+        *,
+        metadata: dict[str, Any] | None = None,
+        window: dict[str, Any] | None = None,
+    ) -> None:
+        self._batch_index += 1
+        meta = {"stream": True, "batch_index": self._batch_index}
+        if metadata:
+            meta.update(metadata)
+        if window:
+            meta["window"] = window
+
+        with self._run.step(step, input_df=self._last_df, metadata=meta) as st:
+            st.capture_output(df)
+        self._last_df = df
+
+    def finish(self, *, status: str = "ok", error: str | None = None) -> None:
+        self._run.finish(status=status, error=error)
+
+    def verify(self) -> tuple[bool, str]:
+        return self._run.verify()

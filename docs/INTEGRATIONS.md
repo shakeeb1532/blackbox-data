@@ -39,3 +39,12 @@ from blackbox.integrations.dbt import load_dbt_run_results
 summary = load_dbt_run_results("target/run_results.json")
 # store summary in run metadata or tags
 ```
+
+## Warehouses (Snowflake, BigQuery, Redshift, Postgres/MySQL)
+Example loading a snapshot from a warehouse:
+```python
+from blackbox.integrations.warehouses import load_sources, load_dataframe
+
+sources = load_sources("config/warehouses.yml")
+df = load_dataframe(sources["snowflake_prod"], "select * from MY_TABLE limit 1000")
+```

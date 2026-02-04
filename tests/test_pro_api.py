@@ -96,11 +96,24 @@ def test_ui_docs(client_run):
     assert r.status_code == 200
 
 
+def test_ui_metrics(client_run):
+    client, _, token, _ = client_run
+    r = client.get(f"/ui/metrics?token={token}")
+    assert r.status_code == 200
+
+
 def test_metrics_requires_auth(client_run):
     client, _, token, _ = client_run
     assert client.get("/metrics").status_code == 401
     r = client.get("/metrics", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
+
+
+def test_stats_endpoint(client_run):
+    client, _, token, _ = client_run
+    r = client.get("/stats", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    assert "runs_total" in r.json()
 
 
 def test_verify_ok(client_run):

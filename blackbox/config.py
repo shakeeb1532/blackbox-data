@@ -71,3 +71,11 @@ class RecorderConfig:
     # We estimate size using memory_usage(deep=True). If object columns are heavy,
     # we add a multiplier to reduce false negatives.
     size_estimate_multiplier: float = 1.0
+
+    # Policy controls (enterprise)
+    # Maximum total run size (artifacts + metadata). None disables check.
+    max_run_mb: float | None = 1024.0
+    # Require verification for prod-tagged runs.
+    require_verify_for_prod: bool = True
+    # Retention window in days (used by cleanup tooling).
+    retention_days: int | None = 30

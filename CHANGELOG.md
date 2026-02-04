@@ -6,3 +6,5 @@
 - UI polish with export and drill-down
 - Schemathesis zero-warning workflow
 - Docker + installation quickstart
+- Enterprise auth (OIDC/JWT) + warehouse adapters
+- Usage dashboards + policy controls

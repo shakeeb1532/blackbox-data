@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import datetime
+import shutil
 from typing import Any
 
 from rich.progress import (
@@ -568,6 +570,46 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def cmd_cleanup(args: argparse.Namespace) -> int:
+    store = Store.local(args.root)
+    retention_days = float(args.retention_days)
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=retention_days)
+    removed = 0
+    kept = 0
+    projects = store.list_dirs("")
+    for project in projects:
+        datasets = store.list_dirs(project)
+        for dataset in datasets:
+            runs = store.list_dirs(f"{project}/{dataset}")
+            for run_id in runs:
+                run_key = f"{project}/{dataset}/{run_id}/run.json"
+                try:
+                    run_obj = store.get_json(run_key)
+                except Exception:
+                    continue
+                created_at = run_obj.get("created_at") or run_obj.get("finished_at")
+                if not created_at:
+                    kept += 1
+                    continue
+                try:
+                    ts = str(created_at).replace("Z", "+00:00")
+                    dt = datetime.datetime.fromisoformat(ts)
+                except Exception:
+                    kept += 1
+                    continue
+                if dt < cutoff:
+                    path = store._path(f"{project}/{dataset}/{run_id}")
+                    if args.dry_run:
+                        print("DRY RUN remove", path)
+                    else:
+                        shutil.rmtree(path, ignore_errors=True)
+                    removed += 1
+                else:
+                    kept += 1
+    print(f"cleanup complete: removed={removed} kept={kept}")
+    return 0
+
+
 # -----------------------------
 # Parser
 # -----------------------------
@@ -621,6 +663,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Override diff rendering: rows (default), schema only, or keys-only",
     )
     p_report.set_defaults(func=cmd_report)
+
+    p_cleanup = sub.add_parser("cleanup", help="Delete runs older than retention window (local store)")
+    p_cleanup.add_argument("--retention-days", required=True, type=float)
+    p_cleanup.add_argument("--dry-run", action="store_true", help="Only print what would be removed")
+    p_cleanup.set_defaults(func=cmd_cleanup)
 
     return p
 

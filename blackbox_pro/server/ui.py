@@ -12,6 +12,7 @@ from blackbox_pro.server.api import get_store
 from blackbox.seal import verify_chain_with_payloads
 from blackbox.util import utc_now_iso
 from blackbox_pro.server.auth import require_role, require_project_access
+from blackbox_pro.server.stats import compute_stats
 
 router = APIRouter()
 
@@ -326,16 +327,7 @@ def _page(title: str, body: str) -> HTMLResponse:
     label{ font-size: 12px; font-weight: 750; color: var(--muted); display:block; margin-bottom:6px; }
     .field{ display:flex; flex-direction:column; }
     """
-    html_doc = f"""<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>{_h(title)}</title>
-    <style>{css}</style>
-  </head>
-  <body>
-    {body}
+    script = """
     <script>
       (function(){
         const TOKEN_KEY = "bb_token";
@@ -389,6 +381,18 @@ def _page(title: str, body: str) -> HTMLResponse:
         });
       })();
     </script>
+    """
+    html_doc = f"""<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>{_h(title)}</title>
+    <style>{css}</style>
+  </head>
+  <body>
+    {body}
+    {script}
   </body>
 </html>
 """
@@ -438,6 +442,7 @@ def ui_home(
         <div class="actions">
           <span id="auth-status" class="badge badge-muted">auth: no token</span>
           <a class="btn" data-token-link href="/docs">Docs</a>
+          <a class="btn" data-token-link href="/ui/metrics">Metrics</a>
           <a class="btn" data-token-link href="/openapi.json">OpenAPI</a>
           <a class="btn" data-token-link href="/ui/docs">Report Guide</a>
         </div>
@@ -789,6 +794,7 @@ def ui(
           <span id="auth-status" class="badge badge-muted">auth: no token</span>
           <a class="btn" data-token-link href="/ui/home">Home</a>
           <a class="btn" data-token-link href="/docs">Docs</a>
+          <a class="btn" data-token-link href="/ui/metrics">Metrics</a>
           <a class="btn" data-token-link href="/openapi.json">OpenAPI</a>
           <a class="btn" data-token-link href="/ui/docs">Report Guide</a>
           <a class="btn" data-token-link href="/ui?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}&view=summary">Summary</a>
@@ -816,6 +822,53 @@ def ui(
     </div>
     """
     return _page(title, body)
+
+
+@router.get("/ui/metrics", response_class=HTMLResponse, include_in_schema=False)
+def ui_metrics() -> HTMLResponse:
+    store = get_store()
+    stats = compute_stats(store)
+    runs_per_day = stats.get("runs_per_day") or {}
+    churn = stats.get("top_datasets_by_churn") or []
+    body = f"""
+    <div class="topbar">
+      <div class="wrap brand">
+        <div>
+          <h1><span class="logo-dot"></span>Blackbox Data Pro <small>metrics</small></h1>
+          <div class="muted" style="font-size:12px;margin-top:2px;">Operational usage dashboard</div>
+        </div>
+        <div class="actions">
+          <span id="auth-status" class="badge badge-muted">auth: no token</span>
+          <a class="btn" data-token-link href="/ui/home">Home</a>
+          <a class="btn" data-token-link href="/ui">Runs</a>
+          <a class="btn" data-token-link href="/docs">Docs</a>
+        </div>
+      </div>
+    </div>
+    <div class="wrap content">
+      <div class="grid">
+        <div class="card">
+          <h2>Run Activity</h2>
+          {_kv("Runs total", stats.get("runs_total"))}
+          {_kv("Verify pass rate", f"{stats.get('verify_pass_rate', 0)*100:.1f}%")}
+          {_kv("Verify ok", stats.get("verify_ok"))}
+          {_kv("Verify fail", stats.get("verify_fail"))}
+          {_kv("Avg latency (ms)", stats.get("avg_latency_ms"))}
+          {_kv("Storage total (MB)", stats.get("storage_mb_total"))}
+        </div>
+        <div class="card">
+          <h2>Runs / Day</h2>
+          {_json_pre(runs_per_day)}
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px;">
+        <h2>Top Datasets by Churn</h2>
+        {_json_pre(churn)}
+      </div>
+      <div class="footer">Blackbox Data Pro – metrics</div>
+    </div>
+    """
+    return _page("Blackbox Data Pro – Metrics", body)
 
 
 @router.get("/ui/diff_keys", include_in_schema=False)
@@ -987,6 +1040,7 @@ def ui_docs() -> HTMLResponse:
         <div class="actions">
           <span id="auth-status" class="badge badge-muted">auth: no token</span>
           <a class="btn" data-token-link href="/ui/home">Home</a>
+          <a class="btn" data-token-link href="/ui/metrics">Metrics</a>
           <a class="btn" data-token-link href="/docs">API Docs</a>
         </div>
       </div>

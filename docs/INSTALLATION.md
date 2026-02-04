@@ -14,6 +14,11 @@ python3 -m pip install -U pip
 python3 -m pip install -e ".[pro]"
 ```
 
+Warehouse adapters (optional):
+```bash
+python3 -m pip install -e ".[pro,warehouse]"
+```
+
 Generate demo data:
 ```bash
 python examples/demo_pro.py

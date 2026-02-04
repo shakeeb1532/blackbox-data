@@ -25,6 +25,16 @@ pro = [
   "fastapi>=0.110",
   "uvicorn>=0.27",
   "python-multipart>=0.0.9",
+  "httpx>=0.27",
+  "PyJWT>=2.8",
+]
+warehouse = [
+  "PyYAML>=6.0",
+  "sqlalchemy>=2.0",
+  "psycopg2-binary>=2.9",
+  "pymysql>=1.1",
+  "snowflake-connector-python>=3.5",
+  "google-cloud-bigquery>=3.16",
 ]
 
 [project.scripts]
@@ -42,4 +52,3 @@ addopts = "-q"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["blackbox*", "blackbox_pro*", "bb*"]
-

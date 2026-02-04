@@ -36,6 +36,9 @@ print(ok, msg)
 - Enable `snapshot_async` for low‑latency steps.
 - Use `summary_only_threshold` to skip deep diff on high‑churn steps.
 - Use `chunk_rows` for large datasets.
+- Enforce `RecorderConfig.max_run_mb` for run size limits.
+- Enable `RecorderConfig.require_verify_for_prod` for prod runs.
+- Use `blackbox cleanup --retention-days` to enforce retention windows.
 
 ## Spark / Distributed Engines (Experimental)
 For Spark/Polars/DuckDB, pass dataframe objects to steps and they will be converted
