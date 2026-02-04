@@ -1,0 +1,11 @@
+.git
+.venv
+.blackbox_store
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.DS_Store
+blackbox_data.egg-info
+benchmarks

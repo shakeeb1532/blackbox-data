@@ -1,0 +1,17 @@
+.DS_Store
+.hypothesis/
+.venv/
+.blackbox_store/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+reports/
+benchmarks/*.csv
+benchmarks/*.json
+benchmarks/load_store/
+bundle/
+preview_ui.html
