@@ -1,5 +1,9 @@
 # Installation Guide
 
+## Supported Versions
+- Python: 3.10, 3.11, 3.12
+- OS: macOS, Linux (tested)
+
 This guide covers local and Docker installation for the v1.0 developer‑tooling release.
 
 ## Local (Recommended for development)
@@ -64,6 +68,17 @@ Open the UI:
 ```
 http://127.0.0.1:8088/ui/home?token=dev-secret-token
 ```
+
+## Docker Compose
+```bash
+docker compose up -d
+```
+
+## Environment Variables
+- `BLACKBOX_PRO_TOKEN`: bearer token for API + UI
+- `BLACKBOX_PRO_TOKENS`: multi-tenant tokens (`role@tenant1|tenant2:token`)
+- `BLACKBOX_PRO_ROOT`: store root path
+- `BLACKBOX_PRO_TOKEN_FILE`: read token(s) from file
 
 ## Token File (Optional)
 ```bash

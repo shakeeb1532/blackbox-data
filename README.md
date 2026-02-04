@@ -16,11 +16,17 @@ Blackbox Data is a lightweight, tamper-evident forensic recorder for pandas data
 - CLI for listing, verification, and reports.
 
 ## Quickstart
+One-command quickstart:
+```bash
+python3 -m venv .venv && source .venv/bin/activate && python3 -m pip install -U pip && python3 -m pip install -e ".[pro]" && blackbox-pro serve --host 0.0.0.0 --port 8088
+```
+
+Local dev (step-by-step):
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install -U pip
-python3 -m pip install -e .
+python3 -m pip install -e ".[pro]"
 ```
 
 ```python
@@ -84,6 +90,39 @@ blackbox --root ./.blackbox_store verify --project acme-data --dataset demo --ru
 Optimized for up to ~1M rows per step. Larger datasets are supported via chunking.
 Use `DiffConfig.chunk_rows` (for example, `250_000`) to reduce peak memory and improve progress reporting.
 
+## Installation + Deployment
+Supported Python: 3.10, 3.11, 3.12.  
+Tested OS: macOS, Linux.
+
+Docker quickstart:
+```bash
+docker build -t blackbox-data .
+docker run -p 8088:8088 \
+  -e BLACKBOX_PRO_TOKEN=dev-secret-token \
+  -e BLACKBOX_PRO_ROOT=/data/.blackbox_store \
+  -v $(pwd)/.blackbox_store:/data/.blackbox_store \
+  blackbox-data
+```
+
+Docker Compose:
+```bash
+docker compose up -d
+```
+
+Environment variables:
+- `BLACKBOX_PRO_TOKEN`: bearer token for API + UI
+- `BLACKBOX_PRO_TOKENS`: multi-tenant tokens (`role@tenant1|tenant2:token`)
+- `BLACKBOX_PRO_ROOT`: store root path
+- `BLACKBOX_PRO_TOKEN_FILE`: read token(s) from file
+
+## Security Model
+- API uses Bearer token auth; UI routes accept `?token=` for convenience.
+- Treat tokens as secrets; scope tokens to tenants when possible.
+- Evidence bundles + audit hash chains provide tamper-evident integrity.
+
+## Versioning
+Semantic-ish versioning with release notes in `CHANGELOG.md`.
+
 ## Positioning vs Adjacent Tools
 Blackbox Data focuses on forensic change evidence for pandas pipelines. It is complementary to adjacent categories such as:
 - Data validation suites (for example, Great Expectations).
@@ -111,3 +150,14 @@ If you already use any of these, Blackbox Data can act as the step-level evidenc
 
 ## Benchmarks
 See `benchmarks/README.md` for benchmark, load, stress, and security runs and CSV outputs.
+
+## Testing
+Core coverage includes:
+- auth enforcement
+- UI rendering
+- tamper detection
+- end-to-end run → report
+Run the full suite with:
+```bash
+.venv/bin/python -m pytest
+```

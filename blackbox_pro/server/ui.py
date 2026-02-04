@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import html
 import json
+import hashlib
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, Query
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from blackbox_pro.server.api import get_store
 from blackbox.seal import verify_chain_with_payloads
+from blackbox.util import utc_now_iso
+from blackbox_pro.server.auth import require_role, require_project_access
 
 router = APIRouter()
 
@@ -333,6 +336,59 @@ def _page(title: str, body: str) -> HTMLResponse:
   </head>
   <body>
     {body}
+    <script>
+      (function(){
+        const TOKEN_KEY = "bb_token";
+        function getToken(){
+          return (localStorage.getItem(TOKEN_KEY) || "").trim();
+        }
+        function setToken(v){
+          localStorage.setItem(TOKEN_KEY, (v || "").trim());
+        }
+        function applyToken(){
+          const token = getToken();
+          document.querySelectorAll("[data-token-link]").forEach((el) => {
+            try{
+              const url = new URL(el.getAttribute("href"), window.location.origin);
+              if(token){
+                url.searchParams.set("token", token);
+              }else{
+                url.searchParams.delete("token");
+              }
+              el.setAttribute("href", url.pathname + url.search);
+            }catch(_e){}
+          });
+          document.querySelectorAll("form[data-token-form]").forEach((form) => {
+            let input = form.querySelector("input[name='token']");
+            if(!input){
+              input = document.createElement("input");
+              input.type = "hidden";
+              input.name = "token";
+              form.appendChild(input);
+            }
+            input.value = token;
+          });
+          const status = document.getElementById("auth-status");
+          if(status){
+            status.textContent = token ? "auth: token set" : "auth: no token";
+            status.className = token ? "badge badge-ok" : "badge badge-muted";
+          }
+        }
+        document.addEventListener("DOMContentLoaded", () => {
+          document.querySelectorAll("[data-token-input]").forEach((el) => {
+            el.value = getToken();
+            el.addEventListener("input", (e) => setToken(e.target.value));
+          });
+          document.querySelectorAll("[data-token-apply]").forEach((el) => {
+            el.addEventListener("click", (e) => {
+              e.preventDefault();
+              applyToken();
+            });
+          });
+          applyToken();
+        });
+      })();
+    </script>
   </body>
 </html>
 """
@@ -380,9 +436,10 @@ def ui_home(
           <div class="muted" style="font-size:12px;margin-top:2px;">Forensic audit trail & diff intelligence for Pandas pipelines</div>
         </div>
         <div class="actions">
-          <a class="btn" href="/docs">Docs</a>
-          <a class="btn" href="/openapi.json">OpenAPI</a>
-          <a class="btn" href="/ui/docs">Report Guide</a>
+          <span id="auth-status" class="badge badge-muted">auth: no token</span>
+          <a class="btn" data-token-link href="/docs">Docs</a>
+          <a class="btn" data-token-link href="/openapi.json">OpenAPI</a>
+          <a class="btn" data-token-link href="/ui/docs">Report Guide</a>
         </div>
       </div>
     </div>
@@ -391,7 +448,7 @@ def ui_home(
       <div class="card">
         <h2>Open a run</h2>
 
-        <form method="get" action="/ui">
+        <form method="get" action="/ui" data-token-form>
           <div class="formrow">
             <div class="field">
               <label>Project</label>
@@ -427,6 +484,16 @@ def ui_home(
             </div>
           </div>
         </form>
+
+        <div class="formrow" style="margin-top:12px;">
+          <div class="field" style="flex:1;">
+            <label>UI Token</label>
+            <input data-token-input placeholder="paste token here" />
+          </div>
+          <div class="field" style="min-width:160px;">
+            <button class="btn" data-token-apply type="button" style="height:42px;cursor:pointer;">Apply Token</button>
+          </div>
+        </div>
 
         <div class="chips">
           <span class="chip">Tip: bookmark /ui/home</span>
@@ -511,17 +578,49 @@ def ui(
         if view == "verbose":
             body_html = _json_pre(st)
         else:
-            trimmed = {
-                "ordinal": st.get("ordinal"),
-                "name": st.get("name"),
-                "status": st.get("status"),
-                "schema_diff": st.get("schema_diff"),
-                "diff": st.get("diff"),
-                "code": st.get("code"),
-                "input": st.get("input"),
-                "output": st.get("output"),
-            }
-            body_html = _json_pre(trimmed)
+            diff_obj = st.get("diff") or {}
+
+            def _extract_list(obj: Any) -> tuple[list[str], bool]:
+                if isinstance(obj, dict):
+                    if "items" in obj and isinstance(obj["items"], list):
+                        return [str(x) for x in obj["items"]], bool(obj.get("truncated"))
+                    if "head" in obj and isinstance(obj["head"], list):
+                        return [str(x) for x in obj["head"]], True
+                if isinstance(obj, list):
+                    return [str(x) for x in obj], False
+                return [], False
+
+            def _render_keys(title: str, keys: list[str], truncated: bool, kind: str) -> str:
+                max_show = 10
+                head = keys[:max_show]
+                items = "".join([f"<li>{_h(k)}</li>" for k in head]) if head else "<li class='muted'>none</li>"
+                trunc_badge = _badge("truncated", "warn") if truncated or len(keys) > max_show else ""
+                download = f"/ui/diff_keys?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}&ordinal={_h(st.get('ordinal', i))}&kind={_h(kind)}"
+                return f"""
+                <div class='card' style='margin-top:10px;'>
+                  <div style='display:flex;justify-content:space-between;align-items:center;'>
+                    <strong>{_h(title)}</strong>
+                    <div class='chips'>
+                      {trunc_badge}
+                      <a class='btn' data-token-link href='{download}'>Download full</a>
+                    </div>
+                  </div>
+                  <ul style='margin:8px 0 0 16px;line-height:1.6;'>{items}</ul>
+                </div>
+                """
+
+            added_keys, added_trunc = _extract_list(diff_obj.get("added_keys"))
+            removed_keys, removed_trunc = _extract_list(diff_obj.get("removed_keys"))
+            changed_keys, changed_trunc = _extract_list(diff_obj.get("changed_keys"))
+            summary_only = bool(diff_obj.get("summary_only"))
+            summary_note = "<div class='muted'>Diff summarized (high churn) — keys may be empty.</div>" if summary_only else ""
+
+            body_html = f"""
+            {summary_note}
+            {_render_keys('Added keys', added_keys, added_trunc, 'added')}
+            {_render_keys('Removed keys', removed_keys, removed_trunc, 'removed')}
+            {_render_keys('Changed keys', changed_keys, changed_trunc, 'changed')}
+            """
 
         step_cards.append(
             f"""
@@ -602,6 +701,15 @@ def ui(
         {verify_badge}
         <span class="badge badge-muted">steps: {_h(len(run_obj.get("steps") or []))}</span>
       </div>
+      <div class="formrow" style="margin-top:10px;">
+        <div class="field" style="flex:1;">
+          <label>UI Token</label>
+          <input data-token-input placeholder="paste token here" />
+        </div>
+        <div class="field" style="min-width:160px;">
+          <button class="btn" data-token-apply type="button" style="height:42px;cursor:pointer;">Apply Token</button>
+        </div>
+      </div>
       <div style="margin-top:10px;">
         {_kv("Project", project)}
         {_kv("Dataset", dataset)}
@@ -623,9 +731,9 @@ def ui(
         {_kv("Chain head", chain_obj.get("head"))}
       </div>
       <div class="chips">
-        <a class="btn" href="/verify?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">API: /verify</a>
-        <a class="btn" href="/report?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">API: /report</a>
-        <a class="btn" href="/report_verbose?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}&show_keys=head&max_keys=10">API: /report_verbose</a>
+        <a class="btn" data-token-link href="/verify?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">API: /verify</a>
+        <a class="btn" data-token-link href="/report?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">API: /report</a>
+        <a class="btn" data-token-link href="/report_verbose?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}&show_keys=head&max_keys=10">API: /report_verbose</a>
       </div>
     </div>
 
@@ -656,6 +764,16 @@ def ui(
       <h2>Tags</h2>
       {_json_pre(tags)}
     </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h2>Exports</h2>
+      <div class="chips">
+        <a class="btn" data-token-link href="/ui/export_json?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">Export JSON</a>
+        <a class="btn" data-token-link href="/ui/export_html?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">Export HTML</a>
+        <a class="btn" data-token-link href="/ui/export_evidence?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">Evidence ZIP</a>
+        <a class="btn" data-token-link href="/ui/export_evidence_json?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">Evidence JSON</a>
+      </div>
+    </div>
     """
 
     body = f"""
@@ -668,12 +786,13 @@ def ui(
           </div>
         </div>
         <div class="actions">
-          <a class="btn" href="/ui/home">Home</a>
-          <a class="btn" href="/docs">Docs</a>
-          <a class="btn" href="/openapi.json">OpenAPI</a>
-          <a class="btn" href="/ui/docs">Report Guide</a>
-          <a class="btn" href="/ui?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}&view=summary">Summary</a>
-          <a class="btn" href="/ui?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}&view=verbose">Verbose</a>
+          <span id="auth-status" class="badge badge-muted">auth: no token</span>
+          <a class="btn" data-token-link href="/ui/home">Home</a>
+          <a class="btn" data-token-link href="/docs">Docs</a>
+          <a class="btn" data-token-link href="/openapi.json">OpenAPI</a>
+          <a class="btn" data-token-link href="/ui/docs">Report Guide</a>
+          <a class="btn" data-token-link href="/ui?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}&view=summary">Summary</a>
+          <a class="btn" data-token-link href="/ui?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}&view=verbose">Verbose</a>
         </div>
       </div>
     </div>
@@ -699,6 +818,163 @@ def ui(
     return _page(title, body)
 
 
+@router.get("/ui/diff_keys", include_in_schema=False)
+def ui_diff_keys(
+    request,
+    project: str,
+    dataset: str,
+    run_id: str,
+    ordinal: int,
+    kind: str = "added",
+    fmt: str = "json",
+) -> Response:
+    require_project_access(request, project)
+    store = get_store()
+    prefix = f"{project}/{dataset}/{run_id}"
+    run_obj = _get_json_or_none(store, f"{prefix}/run.json")
+    if not run_obj:
+        return Response(content="run not found", media_type="text/plain", status_code=404)
+    steps = run_obj.get("steps") or []
+    step_path = None
+    for s in steps:
+        if int(s.get("ordinal", -1)) == int(ordinal):
+            step_path = s.get("path")
+            break
+    if not step_path:
+        return Response(content="step not found", media_type="text/plain", status_code=404)
+    step_obj = _get_json_or_none(store, f"{prefix}/{step_path}")
+    if not step_obj:
+        return Response(content="step not found", media_type="text/plain", status_code=404)
+    diff = step_obj.get("diff") or {}
+    key_map = {"added": "added_keys", "removed": "removed_keys", "changed": "changed_keys"}
+    key_name = key_map.get(kind, "added_keys")
+    keys = diff.get(key_name) or []
+    if isinstance(keys, dict):
+        keys = keys.get("items") or keys.get("head") or []
+    keys = [str(k) for k in keys]
+    if fmt == "csv":
+        content = "key\n" + "\n".join(keys) + "\n"
+        return Response(content=content, media_type="text/csv")
+    return Response(content=json.dumps({"keys": keys}, ensure_ascii=False, indent=2), media_type="application/json")
+
+
+@router.get("/ui/export_json", include_in_schema=False)
+def ui_export_json(request, project: str, dataset: str, run_id: str) -> Response:
+    require_project_access(request, project)
+    store = get_store()
+    prefix = f"{project}/{dataset}/{run_id}"
+    run_obj = _get_json_or_none(store, f"{prefix}/run.json")
+    chain_obj = _get_json_or_none(store, f"{prefix}/chain.json")
+    if not run_obj or not chain_obj:
+        return Response(content="run not found", media_type="text/plain", status_code=404)
+    ok, msg = verify_chain_with_payloads(chain_obj, store, run_prefix=prefix)
+    payload = {"run": run_obj, "chain": chain_obj, "verify": {"ok": ok, "message": msg}}
+    return Response(
+        content=json.dumps(payload, ensure_ascii=False, indent=2),
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename=report_{run_id}.json"},
+    )
+
+
+@router.get("/ui/export_html", include_in_schema=False)
+def ui_export_html(request, project: str, dataset: str, run_id: str) -> Response:
+    require_project_access(request, project)
+    page = ui(project=project, dataset=dataset, run_id=run_id, view="summary")
+    return Response(
+        content=page.body,
+        media_type="text/html",
+        headers={"Content-Disposition": f"attachment; filename=report_{run_id}.html"},
+    )
+
+
+@router.get("/ui/export_evidence", include_in_schema=False)
+def ui_export_evidence(request, project: str, dataset: str, run_id: str) -> Response:
+    require_role(request, {"admin"})
+    require_project_access(request, project)
+    store = get_store()
+    prefix = f"{project}/{dataset}/{run_id}"
+    run_obj = _get_json_or_none(store, f"{prefix}/run.json")
+    chain_obj = _get_json_or_none(store, f"{prefix}/chain.json")
+    if not run_obj or not chain_obj:
+        return Response(content="run not found", media_type="text/plain", status_code=404)
+    ok, msg = verify_chain_with_payloads(chain_obj, store, run_prefix=prefix)
+    verification = {
+        "verified_at": utc_now_iso(),
+        "ok": bool(ok),
+        "message": msg,
+        "chain_entries": len(chain_obj.get("entries", [])),
+        "chain_head": chain_obj.get("head"),
+    }
+    run_bytes = json.dumps(run_obj, ensure_ascii=False, indent=2).encode("utf-8")
+    chain_bytes = json.dumps(chain_obj, ensure_ascii=False, indent=2).encode("utf-8")
+    verification_bytes = json.dumps(verification, ensure_ascii=False, indent=2).encode("utf-8")
+    meta_bytes = json.dumps({"project": project, "dataset": dataset, "run_id": run_id}, ensure_ascii=False, indent=2).encode("utf-8")
+    manifest = {
+        "run.json": hashlib.sha256(run_bytes).hexdigest(),
+        "chain.json": hashlib.sha256(chain_bytes).hexdigest(),
+        "verification.json": hashlib.sha256(verification_bytes).hexdigest(),
+        "meta.json": hashlib.sha256(meta_bytes).hexdigest(),
+    }
+    manifest_bytes = json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True).encode("utf-8")
+    import io as _io
+    import zipfile as _zip
+    buf = _io.BytesIO()
+    with _zip.ZipFile(buf, "w", compression=_zip.ZIP_DEFLATED) as zf:
+        zf.writestr("run.json", run_bytes)
+        zf.writestr("chain.json", chain_bytes)
+        zf.writestr("verification.json", verification_bytes)
+        zf.writestr("meta.json", meta_bytes)
+        zf.writestr("manifest.json", manifest_bytes)
+    buf.seek(0)
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename=evidence_{run_id}.zip"},
+    )
+
+
+@router.get("/ui/export_evidence_json", include_in_schema=False)
+def ui_export_evidence_json(request, project: str, dataset: str, run_id: str) -> Response:
+    require_role(request, {"admin"})
+    require_project_access(request, project)
+    store = get_store()
+    prefix = f"{project}/{dataset}/{run_id}"
+    run_obj = _get_json_or_none(store, f"{prefix}/run.json")
+    chain_obj = _get_json_or_none(store, f"{prefix}/chain.json")
+    if not run_obj or not chain_obj:
+        return Response(content="run not found", media_type="text/plain", status_code=404)
+    ok, msg = verify_chain_with_payloads(chain_obj, store, run_prefix=prefix)
+    verification = {
+        "verified_at": utc_now_iso(),
+        "ok": bool(ok),
+        "message": msg,
+        "chain_entries": len(chain_obj.get("entries", [])),
+        "chain_head": chain_obj.get("head"),
+    }
+    run_bytes = json.dumps(run_obj, ensure_ascii=False, indent=2).encode("utf-8")
+    chain_bytes = json.dumps(chain_obj, ensure_ascii=False, indent=2).encode("utf-8")
+    verification_bytes = json.dumps(verification, ensure_ascii=False, indent=2).encode("utf-8")
+    meta_bytes = json.dumps({"project": project, "dataset": dataset, "run_id": run_id}, ensure_ascii=False, indent=2).encode("utf-8")
+    manifest = {
+        "run.json": hashlib.sha256(run_bytes).hexdigest(),
+        "chain.json": hashlib.sha256(chain_bytes).hexdigest(),
+        "verification.json": hashlib.sha256(verification_bytes).hexdigest(),
+        "meta.json": hashlib.sha256(meta_bytes).hexdigest(),
+    }
+    payload = {
+        "run": run_obj,
+        "chain": chain_obj,
+        "verification": verification,
+        "meta": {"project": project, "dataset": dataset, "run_id": run_id},
+        "manifest": manifest,
+    }
+    return Response(
+        content=json.dumps(payload, ensure_ascii=False, indent=2),
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename=evidence_{run_id}.json"},
+    )
+
+
 @router.get("/ui/docs", response_class=HTMLResponse, include_in_schema=False)
 def ui_docs() -> HTMLResponse:
     body = f"""
@@ -709,8 +985,9 @@ def ui_docs() -> HTMLResponse:
           <div class="muted" style="font-size:12px;margin-top:2px;">How to read reports and diffs</div>
         </div>
         <div class="actions">
-          <a class="btn" href="/ui/home">Home</a>
-          <a class="btn" href="/docs">API Docs</a>
+          <span id="auth-status" class="badge badge-muted">auth: no token</span>
+          <a class="btn" data-token-link href="/ui/home">Home</a>
+          <a class="btn" data-token-link href="/docs">API Docs</a>
         </div>
       </div>
     </div>

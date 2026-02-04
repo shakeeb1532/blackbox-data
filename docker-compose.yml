@@ -1,0 +1,11 @@
+version: "3.9"
+services:
+  blackbox-pro:
+    image: blackbox-data:latest
+    ports:
+      - "8088:8088"
+    environment:
+      BLACKBOX_PRO_TOKEN: dev-secret-token
+      BLACKBOX_PRO_ROOT: /data/.blackbox_store
+    volumes:
+      - ./.blackbox_store:/data/.blackbox_store
