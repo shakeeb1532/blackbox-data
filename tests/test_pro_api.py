@@ -73,7 +73,9 @@ def test_docs_public(client_run):
 
 def test_ui_home_requires_token(client_run):
     client, _, token, _ = client_run
-    assert client.get("/ui/home").status_code == 401
+    r = client.get("/ui/home")
+    assert r.status_code == 200
+    assert "Login" in r.text
     assert client.get(f"/ui/home?token={token}").status_code == 200
 
 

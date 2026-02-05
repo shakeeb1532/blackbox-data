@@ -224,15 +224,25 @@ def _extract_bearer_token(request: Request) -> Optional[str]:
     return auth.split(" ", 1)[1].strip() or None
 
 
+def _extract_cookie_token(request: Request) -> Optional[str]:
+    tok = request.cookies.get("bbx_token") if hasattr(request, "cookies") else None
+    if tok:
+        tok = tok.strip()
+    return tok or None
+
+
 def verify_request_token(
     request: Request,
     *,
     allow_query_token: bool,
+    allow_cookie: bool = False,
 ) -> tuple[bool, int, str, dict, Optional[str], Optional[str], Optional[list[str]]]:
     """
     Returns: (ok, status_code, detail, headers, role, token_id, tenants)
     """
     token = _extract_bearer_token(request)
+    if token is None and allow_cookie:
+        token = _extract_cookie_token(request)
 
     if token is None and allow_query_token:
         token = request.query_params.get("token") or None
@@ -260,7 +270,9 @@ def verify_request_token(
 
 
 async def require_token(request: Request, *, allow_query_token: bool) -> None:
-    ok, status, detail, headers, role, token_id, tenants = verify_request_token(request, allow_query_token=allow_query_token)
+    ok, status, detail, headers, role, token_id, tenants = verify_request_token(
+        request, allow_query_token=allow_query_token, allow_cookie=allow_query_token
+    )
     if not ok:
         raise HTTPException(status_code=status, detail=detail, headers=headers)
     request.state.auth_role = role or "admin"

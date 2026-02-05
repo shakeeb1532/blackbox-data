@@ -5,7 +5,7 @@ import json
 import hashlib
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Query, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from blackbox_pro.server.api import get_store
@@ -130,7 +130,7 @@ def _summarize_diff(schema_diff: dict, diff_summary: dict) -> str:
 # -----------------------------
 # styling (pure HTML/CSS)
 # -----------------------------
-def _page(title: str, body: str) -> HTMLResponse:
+def _page(title: str, body: str, *, session_auth: bool = False) -> HTMLResponse:
     css = """
     :root{
       --bg: #05060a;
@@ -361,6 +361,7 @@ def _page(title: str, body: str) -> HTMLResponse:
         }
         function applyToken(){
           const token = getToken();
+          const sessionAuth = document.body.dataset.sessionAuth === "1";
           document.querySelectorAll("[data-token-link]").forEach((el) => {
             try{
               const url = new URL(el.getAttribute("href"), window.location.origin);
@@ -384,8 +385,16 @@ def _page(title: str, body: str) -> HTMLResponse:
           });
           const status = document.getElementById("auth-status");
           if(status){
-            status.textContent = token ? "auth: token set" : "auth: no token";
-            status.className = token ? "badge badge-ok" : "badge badge-muted";
+            if(token){
+              status.textContent = "auth: token set";
+              status.className = "badge badge-ok";
+            }else if(sessionAuth){
+              status.textContent = "auth: session";
+              status.className = "badge badge-ok";
+            }else{
+              status.textContent = "auth: no token";
+              status.className = "badge badge-muted";
+            }
           }
         }
         document.addEventListener("DOMContentLoaded", () => {
@@ -425,6 +434,7 @@ def _page(title: str, body: str) -> HTMLResponse:
       })();
     </script>
     """
+    session_flag = "1" if session_auth else "0"
     html_doc = f"""<!doctype html>
 <html>
   <head>
@@ -433,13 +443,33 @@ def _page(title: str, body: str) -> HTMLResponse:
     <title>{_h(title)}</title>
     <style>{css}</style>
   </head>
-  <body>
+  <body data-session-auth="{session_flag}">
     {body}
     {script}
   </body>
 </html>
 """
     return HTMLResponse(html_doc)
+
+
+def _login_form(message: str | None = None) -> HTMLResponse:
+    msg = f"<p class='muted'>{_h(message)}</p>" if message else ""
+    body = f"""
+    <div class="wrap">
+      <div class="card" style="max-width:520px;margin:40px auto;">
+        <h2>Login</h2>
+        {msg}
+        <form method="post" action="/ui/login">
+          <label class="label">Access Token</label>
+          <input class="input" name="token" placeholder="Paste token" />
+          <div style="height:12px"></div>
+          <button class="btn" type="submit">Sign In</button>
+        </form>
+        <p class="muted" style="margin-top:12px">Tokens are stored in a secure local cookie.</p>
+      </div>
+    </div>
+    """
+    return _page("Login", body, session_auth=False)
 
 
 # -----------------------------
@@ -452,10 +482,15 @@ def root_redirect() -> RedirectResponse:
 
 @router.get("/ui/home", response_class=HTMLResponse, include_in_schema=False)
 def ui_home(
+    request: Request,
     project: Optional[str] = None,
     dataset: Optional[str] = None,
     run_id: Optional[str] = None,
 ) -> HTMLResponse:
+    has_session = bool(request.cookies.get("bbx_token"))
+    has_query = bool(request.query_params.get("token"))
+    if not (has_session or has_query):
+        return _login_form()
     store = get_store()
 
     # Discover projects/datasets/runs by listing keys.
@@ -475,6 +510,7 @@ def ui_home(
 
     sel_run = run_id or (runs[-1] if runs else "")
 
+    auth_action = '<a class="btn" href="/ui/logout">Logout</a>' if has_session else '<a class="btn" href="/ui/login">Login</a>'
     body = f"""
     <div class="topbar">
       <div class="wrap brand">
@@ -488,6 +524,7 @@ def ui_home(
           <a class="btn" data-token-link href="/ui/metrics">Metrics</a>
           <a class="btn" data-token-link href="/openapi.json">OpenAPI</a>
           <a class="btn" data-token-link href="/ui/docs">Report Guide</a>
+          {auth_action}
         </div>
       </div>
     </div>
@@ -552,7 +589,7 @@ def ui_home(
       <div class="footer">Blackbox Data Pro – UI home</div>
     </div>
     """
-    return _page("Blackbox Data Pro – Home", body)
+    return _page("Blackbox Data Pro – Home", body, session_auth=has_session)
 
 
 # -----------------------------
@@ -560,11 +597,16 @@ def ui_home(
 # -----------------------------
 @router.get("/ui", response_class=HTMLResponse, include_in_schema=False)
 def ui(
+    request: Request,
     project: str = Query(...),
     dataset: str = Query(...),
     run_id: str = Query(...),
     view: str = Query("summary", pattern="^(summary|verbose)$"),
 ) -> HTMLResponse:
+    has_session = bool(request.cookies.get("bbx_token"))
+    has_query = bool(request.query_params.get("token"))
+    if not (has_session or has_query):
+        return _login_form()
     store = get_store()
     prefix = f"{project}/{dataset}/{run_id}"
 
@@ -589,7 +631,7 @@ def ui(
           </div>
         </div>
         """
-        return _page("Blackbox Data Pro – Not found", body)
+        return _page("Blackbox Data Pro – Not found", body, session_auth=has_session)
 
     ok, verify_msg = verify_chain_with_payloads(chain_obj, store, run_prefix=prefix)
     verify_ok = bool(ok)
@@ -849,6 +891,7 @@ def ui(
     </div>
     """
 
+    auth_action = '<a class="btn" href="/ui/logout">Logout</a>' if has_session else '<a class="btn" href="/ui/login">Login</a>'
     body = f"""
     <div class="topbar">
       <div class="wrap brand">
@@ -867,6 +910,7 @@ def ui(
           <a class="btn" data-token-link href="/ui/docs">Report Guide</a>
           <a class="btn" data-token-link href="/ui?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}&view=summary">Summary</a>
           <a class="btn" data-token-link href="/ui?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}&view=verbose">Verbose</a>
+          {auth_action}
         </div>
       </div>
     </div>
@@ -891,15 +935,20 @@ def ui(
       <div class="footer">Blackbox Data Pro – run viewer</div>
     </div>
     """
-    return _page(title, body)
+    return _page(title, body, session_auth=has_session)
 
 
 @router.get("/ui/metrics", response_class=HTMLResponse, include_in_schema=False)
-def ui_metrics() -> HTMLResponse:
+def ui_metrics(request: Request) -> HTMLResponse:
+    has_session = bool(request.cookies.get("bbx_token"))
+    has_query = bool(request.query_params.get("token"))
+    if not (has_session or has_query):
+        return _login_form()
     store = get_store()
     stats = compute_stats(store)
     runs_per_day = stats.get("runs_per_day") or {}
     churn = stats.get("top_datasets_by_churn") or []
+    auth_action = '<a class="btn" href="/ui/logout">Logout</a>' if has_session else '<a class="btn" href="/ui/login">Login</a>'
     body = f"""
     <div class="topbar">
       <div class="wrap brand">
@@ -912,6 +961,7 @@ def ui_metrics() -> HTMLResponse:
           <a class="btn" data-token-link href="/ui/home">Home</a>
           <a class="btn" data-token-link href="/ui">Runs</a>
           <a class="btn" data-token-link href="/docs">Docs</a>
+          {auth_action}
         </div>
       </div>
     </div>
@@ -938,7 +988,7 @@ def ui_metrics() -> HTMLResponse:
       <div class="footer">Blackbox Data Pro – metrics</div>
     </div>
     """
-    return _page("Blackbox Data Pro – Metrics", body)
+    return _page("Blackbox Data Pro – Metrics", body, session_auth=has_session)
 
 
 @router.get("/ui/diff_keys", include_in_schema=False)
@@ -1002,7 +1052,7 @@ def ui_export_json(request: Request, project: str, dataset: str, run_id: str) ->
 @router.get("/ui/export_html", include_in_schema=False)
 def ui_export_html(request: Request, project: str, dataset: str, run_id: str) -> Response:
     require_project_access(request, project)
-    page = ui(project=project, dataset=dataset, run_id=run_id, view="summary")
+    page = ui(request=request, project=project, dataset=dataset, run_id=run_id, view="summary")
     return Response(
         content=page.body,
         media_type="text/html",
@@ -1098,8 +1148,39 @@ def ui_export_evidence_json(request: Request, project: str, dataset: str, run_id
     )
 
 
+@router.get("/ui/login", response_class=HTMLResponse, include_in_schema=False)
+def ui_login_get() -> HTMLResponse:
+    return _login_form()
+
+
+@router.post("/ui/login", include_in_schema=False)
+def ui_login_post(token: str = Form(...)) -> Response:
+    resp = RedirectResponse(url="/ui/home", status_code=302)
+    resp.set_cookie(
+        "bbx_token",
+        token,
+        httponly=True,
+        samesite="lax",
+        secure=False,
+        max_age=60 * 60 * 24 * 30,
+    )
+    return resp
+
+
+@router.get("/ui/logout", include_in_schema=False)
+def ui_logout() -> Response:
+    resp = RedirectResponse(url="/ui/login", status_code=302)
+    resp.delete_cookie("bbx_token")
+    return resp
+
+
 @router.get("/ui/docs", response_class=HTMLResponse, include_in_schema=False)
-def ui_docs() -> HTMLResponse:
+def ui_docs(request: Request) -> HTMLResponse:
+    has_session = bool(request.cookies.get("bbx_token"))
+    has_query = bool(request.query_params.get("token"))
+    if not (has_session or has_query):
+        return _login_form()
+    auth_action = '<a class="btn" href="/ui/logout">Logout</a>' if has_session else '<a class="btn" href="/ui/login">Login</a>'
     body = f"""
     <div class="topbar">
       <div class="wrap brand">
@@ -1112,6 +1193,7 @@ def ui_docs() -> HTMLResponse:
           <a class="btn" data-token-link href="/ui/home">Home</a>
           <a class="btn" data-token-link href="/ui/metrics">Metrics</a>
           <a class="btn" data-token-link href="/docs">API Docs</a>
+          {auth_action}
         </div>
       </div>
     </div>
@@ -1135,4 +1217,4 @@ def ui_docs() -> HTMLResponse:
       <div class="footer">Blackbox Data Pro – docs</div>
     </div>
     """
-    return _page("Blackbox Data Pro – Docs", body)
+    return _page("Blackbox Data Pro – Docs", body, session_auth=has_session)

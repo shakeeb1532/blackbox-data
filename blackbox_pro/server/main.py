@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 import time
 
 from blackbox_pro.server.api import router as api_router
@@ -20,6 +20,8 @@ _PUBLIC_PATH_PREFIXES = (
     "/redoc",
     "/docs/oauth2-redirect",
     "/favicon.ico",
+    "/ui/login",
+    "/ui/logout",
 )
 
 
@@ -52,6 +54,8 @@ async def auth_middleware(request: Request, call_next):
                 )
             except Exception:
                 pass
+        if is_ui and path not in ("/ui/login", "/ui/logout"):
+            return RedirectResponse(url="/ui/login", status_code=302)
         return JSONResponse({"detail": detail}, status_code=status_code, headers=headers)
 
     start = time.perf_counter()
