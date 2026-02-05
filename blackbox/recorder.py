@@ -161,6 +161,10 @@ class StepContext:
                         chunk_rows=self.run.recorder.diff.chunk_rows,
                         hash_group_size=self.run.recorder.diff.hash_group_size,
                         parallel_groups=self.run.recorder.diff.parallel_groups,
+                        auto_parallel_wide=self.run.recorder.diff.auto_parallel_wide,
+                        auto_parallel_threshold_cols=self.run.recorder.diff.auto_parallel_threshold_cols,
+                        auto_parallel_workers=self.run.recorder.diff.auto_parallel_workers,
+                        auto_hash_group_size=self.run.recorder.diff.auto_hash_group_size,
                         cache_rowhash=self.run.recorder.diff.cache_rowhash,
                     )
                     diff_ref = f"{artifacts_prefix}/diff.bbdelta"
@@ -351,14 +355,20 @@ class Run:
 
     # Fingerprints
     def _df_fingerprints(self, df: pd.DataFrame) -> dict[str, Any]:
+        group_size = self.recorder.diff.hash_group_size
+        parallel_groups = self.recorder.diff.parallel_groups
+        if self.recorder.diff.auto_parallel_wide and group_size == 0 and parallel_groups == 0:
+            if int(df.shape[1]) >= int(self.recorder.diff.auto_parallel_threshold_cols):
+                group_size = int(self.recorder.diff.auto_hash_group_size)
+                parallel_groups = int(self.recorder.diff.auto_parallel_workers)
         return {
             "schema_fp": schema_fingerprint(df),
             "content_fp": content_fingerprint_rowhash(
                 df,
                 order_sensitive=self.recorder.diff.order_sensitive,
                 sample_rows=self.recorder.diff.sample_rows,
-                hash_group_size=self.recorder.diff.hash_group_size,
-                parallel_groups=self.recorder.diff.parallel_groups,
+                hash_group_size=group_size,
+                parallel_groups=parallel_groups,
                 cache_rowhash=self.recorder.diff.cache_rowhash,
             ),
             "n_rows": int(len(df)),

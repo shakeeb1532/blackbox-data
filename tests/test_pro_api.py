@@ -153,6 +153,18 @@ def test_verify_ok(client_run):
     assert r.json().get("ok") is True
 
 
+def test_report_matches_hash(client_run):
+    client, run_id, token, _ = client_run
+    r = client.get(
+        f"/report?project=acme-data&dataset=demo&run_id={run_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert r.status_code == 200
+    payload = r.json()
+    assert payload.get("ok") is True
+    assert payload.get("chain", {}).get("head")
+
+
 def test_verify_tamper(client_run):
     client, run_id, token, root = client_run
     run_key = os.path.join(root, "acme-data", "demo", run_id, "run_finish.json")
@@ -168,6 +180,22 @@ def test_verify_tamper(client_run):
     )
     assert r.status_code == 200
     assert r.json().get("ok") is False
+
+
+def test_verify_requires_admin(tmp_path, monkeypatch):
+    root = str(tmp_path)
+    admin_token = "admin-token"
+    viewer_token = "viewer-token"
+    monkeypatch.setenv("BLACKBOX_PRO_ROOT", root)
+    monkeypatch.setenv("BLACKBOX_PRO_TOKENS", f"admin:{admin_token},viewer:{viewer_token}")
+    run_id = _create_run(root)
+    client = TestClient(app)
+
+    r = client.get(
+        f"/verify?project=acme-data&dataset=demo&run_id={run_id}",
+        headers={"Authorization": f"Bearer {viewer_token}"},
+    )
+    assert r.status_code == 403
 
 
 def test_audit_export_admin_viewer(tmp_path, monkeypatch):

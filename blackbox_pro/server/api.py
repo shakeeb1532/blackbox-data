@@ -87,6 +87,7 @@ def verify_run(request: Request, project: NameType, dataset: NameType, run_id: N
     project = _sanitize_component(project, field="project")
     dataset = _sanitize_component(dataset, field="dataset")
     run_id = _sanitize_component(run_id, field="run_id")
+    require_role(request, {"admin"})
     require_project_access(request, project)
     store = get_store()
     prefix = f"{project}/{dataset}/{run_id}"
@@ -119,6 +120,7 @@ def report_run(request: Request, project: NameType, dataset: NameType, run_id: N
     project = _sanitize_component(project, field="project")
     dataset = _sanitize_component(dataset, field="dataset")
     run_id = _sanitize_component(run_id, field="run_id")
+    require_role(request, {"admin", "viewer"})
     require_project_access(request, project)
     store = get_store()
     prefix = f"{project}/{dataset}/{run_id}"
@@ -154,6 +156,7 @@ def report_verbose(
     project = _sanitize_component(project, field="project")
     dataset = _sanitize_component(dataset, field="dataset")
     run_id = _sanitize_component(run_id, field="run_id")
+    require_role(request, {"admin", "viewer"})
     require_project_access(request, project)
     store = get_store()
     prefix = f"{project}/{dataset}/{run_id}"

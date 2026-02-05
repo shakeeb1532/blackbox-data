@@ -83,7 +83,9 @@ blackbox --root ./.blackbox_store verify --project acme-data --dataset demo --ru
 - `DiffConfig.summary_only_threshold`: summarize only when churn is high.
 - `DiffConfig.chunk_rows`: chunked diffing for large datasets.
 - `DiffConfig.hash_group_size` and `DiffConfig.parallel_groups`: wide-frame hashing.
+- `DiffConfig.auto_parallel_wide`, `auto_parallel_threshold_cols`, `auto_parallel_workers`, `auto_hash_group_size`: auto-parallel hashing for wide frames.
 - `DiffConfig.cache_rowhash`: reuse rowhashes between adjacent steps.
+- `DiffConfig.auto_parallel_wide`: auto-enable parallel hashing for wide frames.
 
 ## Snapshot Controls
 - `SnapshotConfig.mode`: `none`, `auto`, `always`.
@@ -103,7 +105,7 @@ Docker quickstart:
 ```bash
 docker build -t blackbox-data .
 docker run -p 8088:8088 \
-  -e BLACKBOX_PRO_TOKEN=dev-secret-token \
+  -e BLACKBOX_PRO_TOKEN=your-token \
   -e BLACKBOX_PRO_ROOT=/data/.blackbox_store \
   -v $(pwd)/.blackbox_store:/data/.blackbox_store \
   blackbox-data
@@ -114,15 +116,21 @@ Docker Compose:
 docker compose up -d
 ```
 
+Export a full run bundle:
+```bash
+blackbox-pro export --project acme-data --dataset demo --run <run_id> --format zip
+```
+
 Environment variables:
 - `BLACKBOX_PRO_TOKEN`: bearer token for API + UI
 - `BLACKBOX_PRO_TOKENS`: multi-tenant tokens (`role@tenant1|tenant2:token`)
 - `BLACKBOX_PRO_ROOT`: store root path
 - `BLACKBOX_PRO_TOKEN_FILE`: read token(s) from file
- - `BLACKBOX_PRO_OIDC_ISSUER`: OIDC issuer URL (Auth0/Okta/Azure AD)
- - `BLACKBOX_PRO_OIDC_AUDIENCE`: OIDC audience
- - `BLACKBOX_PRO_OIDC_JWKS_URL`: override JWKS URL
- - `BLACKBOX_WAREHOUSE_CONFIG`: warehouse config YAML path
+- `BLACKBOX_PRO_ALLOW_DEV_TOKEN`: enable legacy `dev-secret-token` (not recommended)
+- `BLACKBOX_PRO_OIDC_ISSUER`: OIDC issuer URL (Auth0/Okta/Azure AD)
+- `BLACKBOX_PRO_OIDC_AUDIENCE`: OIDC audience
+- `BLACKBOX_PRO_OIDC_JWKS_URL`: override JWKS URL
+- `BLACKBOX_WAREHOUSE_CONFIG`: warehouse config YAML path
 
 ## Security Model
 - API uses Bearer token auth; UI routes accept `?token=` for convenience.

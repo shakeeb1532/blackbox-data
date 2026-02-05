@@ -22,7 +22,12 @@ class DiffConfig:
     # Hashing controls for wide frames.
     hash_group_size: int = 0
     parallel_groups: int = 0
-    # Cache rowhashes on DataFrame attrs for reuse across steps.
+    # Auto-parallelize wide diffs when user has not set explicit values.
+    auto_parallel_wide: bool = True
+    auto_parallel_threshold_cols: int = 80
+    auto_parallel_workers: int = 4
+    auto_hash_group_size: int = 8
+    # Cache rowhashes in-memory (weakref) for reuse within a run.
     cache_rowhash: bool = True
 
 

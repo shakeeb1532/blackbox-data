@@ -1,14 +1,20 @@
 # Security, SSO, and SIEM
 
 ## Token Auth (default)
-Use a single token:
+Generate a key and store it securely:
 ```bash
-export BLACKBOX_PRO_TOKEN=dev-secret-token
+blackbox-pro apikey --role admin --token-file ./.blackbox_tokens --show-line
+export BLACKBOX_PRO_TOKEN_FILE=./.blackbox_tokens
 ```
 
 Use role‑based and multi‑tenant tokens:
 ```bash
 export BLACKBOX_PRO_TOKENS="admin@acme-data:admin-token,viewer@acme-data|beta:viewer-token"
+```
+
+Legacy dev token (not recommended):
+```bash
+export BLACKBOX_PRO_ALLOW_DEV_TOKEN=1
 ```
 
 ## OIDC JWT (optional)

@@ -78,8 +78,27 @@ def _get_rowhash_cache(df: pd.DataFrame) -> dict[str, Any]:
     return _ROW_HASH_CACHE[key]
 
 
-def _rowhash_cache_key(cols: list[str], *, group_size: int, parallel_groups: int) -> str:
-    return f"cols={','.join(cols)}|group={group_size}|pg={parallel_groups}"
+def _auto_parallel_settings(
+    cols_count: int,
+    group_size: int,
+    parallel_groups: int,
+    *,
+    auto_parallel: bool,
+    threshold_cols: int,
+    workers: int,
+    group_size_default: int,
+) -> tuple[int, int]:
+    if not auto_parallel:
+        return group_size, parallel_groups
+    if group_size or parallel_groups:
+        return group_size, parallel_groups
+    if cols_count >= threshold_cols:
+        return group_size_default, max(2, int(workers))
+    return group_size, parallel_groups
+
+
+def _rowhash_cache_key(cols: list[str], *, group_size: int) -> str:
+    return f"cols={','.join(cols)}|group={group_size}"
 
 
 def _hash_frame(df: pd.DataFrame, cols: list[str]) -> pd.Series:
@@ -104,7 +123,7 @@ def _rowhash_series(
     if not cols:
         return pd.Series([0] * len(df), index=df.index, dtype="uint64")
 
-    cache_key = _rowhash_cache_key(cols, group_size=group_size, parallel_groups=parallel_groups)
+    cache_key = _rowhash_cache_key(cols, group_size=group_size)
     if cache_rowhash:
         cache = _get_rowhash_cache(df)
         cached = cache.get(cache_key)
@@ -198,6 +217,10 @@ def diff_rowhash(
     chunk_rows: int = 0,
     hash_group_size: int = 0,
     parallel_groups: int = 0,
+    auto_parallel_wide: bool = False,
+    auto_parallel_threshold_cols: int = 40,
+    auto_parallel_workers: int = 4,
+    auto_hash_group_size: int = 8,
     cache_rowhash: bool = False,
 ) -> tuple[dict[str, Any], DiffSummary]:
     """
@@ -235,6 +258,17 @@ def diff_rowhash(
 
     pk_set = set(pk)
     cols_hashed = [c for c in common_cols if c not in pk_set]
+
+    # Auto-parallelize wide frames unless user provided explicit settings.
+    hash_group_size, parallel_groups = _auto_parallel_settings(
+        len(cols_hashed),
+        hash_group_size,
+        parallel_groups,
+        auto_parallel=auto_parallel_wide,
+        threshold_cols=auto_parallel_threshold_cols,
+        workers=auto_parallel_workers,
+        group_size_default=auto_hash_group_size,
+    )
 
     if sample_rows and sample_rows > 0:
         aa = a.head(int(sample_rows)).copy()

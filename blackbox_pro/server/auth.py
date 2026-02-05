@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import hashlib
 import logging
+import secrets
 from dataclasses import dataclass
 from typing import Optional
 
@@ -18,16 +19,10 @@ def expected_token() -> str:
       1) BLACKBOX_PRO_TOKEN env var
       2) (fallback) dev-secret-token
     """
-    token_file = os.environ.get("BLACKBOX_PRO_TOKEN_FILE")
-    if token_file:
-        try:
-            with open(token_file, "r", encoding="utf-8") as f:
-                tok = f.read().strip()
-                if tok:
-                    return tok
-        except Exception as e:
-            _logger.debug("Failed to read token file: %s", e)
-    return os.environ.get("BLACKBOX_PRO_TOKEN") or "dev-secret-token"
+    reg = token_registry()
+    if reg:
+        return next(iter(reg.keys()))
+    return ""
 
 
 def _hash_token(token: str) -> str:
@@ -170,6 +165,19 @@ def _parse_token_lines(lines: list[str]) -> dict[str, TokenInfo]:
     return out
 
 
+_FALLBACK_TOKEN: str | None = None
+
+
+def _fallback_token() -> str:
+    global _FALLBACK_TOKEN
+    if _FALLBACK_TOKEN is None:
+        _FALLBACK_TOKEN = secrets.token_urlsafe(32)
+        _logger.warning(
+            "No tokens configured; generated an ephemeral token for this session only."
+        )
+    return _FALLBACK_TOKEN
+
+
 def token_registry() -> dict[str, TokenInfo]:
     """
     Returns token -> role mapping.
@@ -196,8 +204,15 @@ def token_registry() -> dict[str, TokenInfo]:
         except Exception as e:
             _logger.debug("Failed to read token registry: %s", e)
 
-    tok = os.environ.get("BLACKBOX_PRO_TOKEN") or "dev-secret-token"
-    return {tok: TokenInfo(role="admin", tenants=["*"])}
+    tok = os.environ.get("BLACKBOX_PRO_TOKEN")
+    if tok:
+        return {tok: TokenInfo(role="admin", tenants=["*"])}
+
+    if os.environ.get("BLACKBOX_PRO_ALLOW_DEV_TOKEN") == "1":
+        return {"dev-secret-token": TokenInfo(role="admin", tenants=["*"])}
+
+    # No configured tokens; generate a session token.
+    return {_fallback_token(): TokenInfo(role="admin", tenants=["*"])}
 
 
 def _extract_bearer_token(request: Request) -> Optional[str]:
