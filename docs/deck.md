@@ -67,6 +67,13 @@ flowchart TB
 - Audit‑grade integrity chain
 
 ---
+## Security Use Cases
+- Tamper‑evident evidence for incident response  
+- Detect unexpected churn (data poisoning / manipulation)  
+- Exportable proof for audits and compliance  
+- SIEM‑friendly audit logs  
+
+---
 ## Enterprise Readiness
 - Token auth + RBAC + multi‑tenant
 - OIDC / JWT support

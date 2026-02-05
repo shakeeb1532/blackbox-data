@@ -179,6 +179,12 @@ Environment variables:
 - Treat tokens as secrets; scope tokens to tenants when possible.
 - Evidence bundles + audit hash chains provide tamper-evident integrity.
 
+## Cybersecurity Applications
+- **Forensic integrity:** detect tampering in pipeline outputs with hash‑chain verification.
+- **Incident response:** export evidence bundles for post‑incident review and audit.
+- **Data poisoning defense:** highlight unexpected drift or high churn changes.
+- **Compliance alignment:** supports SOC2/ISO evidence workflows.
+
 ## Enterprise Extensions
 - OIDC/JWT auth + multi-tenant RBAC
 - Warehouse adapters (Snowflake, BigQuery, Redshift, Postgres/MySQL)

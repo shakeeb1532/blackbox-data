@@ -4,6 +4,7 @@ Product docs and guides.
 
 Entry points:
 - `SECURITY_AND_SSO.md`
+- `CYBERSECURITY.md`
 - `INSTALLATION.md`
 - `INTEGRATIONS.md`
 - `TROUBLESHOOTING.md`
