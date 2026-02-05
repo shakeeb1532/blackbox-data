@@ -1,18 +1,22 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
-from blackbox import Recorder, Run
-
-
-def dagster_tags(context: Any) -> dict[str, str]:
-    return {
-        "dagster_job": getattr(context, "job_name", "") or "",
-        "dagster_run_id": getattr(context, "run_id", "") or "",
-        "dagster_op": getattr(context, "op", None).name if getattr(context, "op", None) else "",
-    }
+from blackbox.engines import is_dataframe_like, to_pandas
 
 
-def start_dagster_run(rec: Recorder, context: Any, *, project: str, dataset: str) -> Run:
-    tags = {"engine": "dagster", **dagster_tags(context)}
-    return rec.start_run(tags=tags)
+def blackbox_op(recorder, name: str, func: Callable[..., Any]):
+    """
+    Wrap a Dagster op/asset callable so it records a run and step automatically.
+    """
+    def _wrapped(*args, **kwargs):
+        run = recorder.start_run(tags={"source": "dagster"})
+        with run.step(name) as st:
+            result = func(*args, **kwargs)
+            if is_dataframe_like(result):
+                st.capture_output(to_pandas(result))
+            else:
+                st.add_metadata(result_type=str(type(result)))
+        run.finish()
+        return result
+    return _wrapped

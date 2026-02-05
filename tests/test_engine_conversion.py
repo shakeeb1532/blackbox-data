@@ -86,3 +86,17 @@ def test_engine_polars_arrow_duckdb(tmp_path):
     run.finish()
     ok, msg = run.verify()
     assert ok, msg
+
+
+def test_cli_wrap(tmp_path):
+    from blackbox.cli import cmd_wrap
+    import sys
+    class Args:
+        root = str(tmp_path)
+        project = "acme"
+        dataset = "demo"
+        run_id = None
+        name = "cmd"
+        cmd = [sys.executable, "-c", "print('hello')"]
+    rc = cmd_wrap(Args())
+    assert rc == 0

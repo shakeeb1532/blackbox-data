@@ -1,23 +1,21 @@
 from __future__ import annotations
 
-import json
-from typing import Any
+import os
+from typing import Dict
 
 
-def load_dbt_run_results(path: str) -> dict[str, Any]:
+def collect_dbt_artifacts(root: str) -> Dict[str, bytes]:
     """
-    Load dbt run_results.json and return a small summary that can be stored
-    as run metadata or tags.
+    Collect dbt artifacts (run_results.json, manifest.json) if present.
+    Returns dict of filename -> bytes.
     """
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    results = data.get("results") or []
-    statuses = {}
-    for r in results:
-        status = r.get("status") or "unknown"
-        statuses[status] = statuses.get(status, 0) + 1
-    return {
-        "dbt_status_counts": statuses,
-        "dbt_execution_time": data.get("elapsed_time"),
-        "dbt_generated_at": data.get("generated_at"),
-    }
+    out: Dict[str, bytes] = {}
+    target = os.path.join(root, "target")
+    if not os.path.isdir(target):
+        return out
+    for name in ("run_results.json", "manifest.json"):
+        path = os.path.join(target, name)
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                out[name] = f.read()
+    return out

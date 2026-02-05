@@ -5,6 +5,8 @@ import json
 import datetime
 import shutil
 from typing import Any
+import subprocess
+import os
 
 from rich.progress import (
     Progress,
@@ -16,6 +18,9 @@ from rich.progress import (
 )
 
 from .store import Store
+from .config import RecorderConfig, DiffConfig, SnapshotConfig, SealConfig
+from .recorder import Recorder
+from .integrations.dbt import collect_dbt_artifacts
 from .seal import verify_chain_with_payloads
 from .util import safe_path_component
 
@@ -610,6 +615,58 @@ def cmd_cleanup(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_wrap(args: argparse.Namespace) -> int:
+    cmd = list(args.cmd or [])
+    if cmd and cmd[0] == "--":
+        cmd = cmd[1:]
+    if not cmd:
+        print("ERROR: wrap requires a command. Example: blackbox --root ./.blackbox_store wrap --project p --dataset d -- python pipeline.py")
+        return 2
+
+    store = Store.local(args.root)
+    rec = Recorder(
+        store=store,
+        project=args.project,
+        dataset=args.dataset,
+        diff=DiffConfig(mode="none"),
+        snapshot=SnapshotConfig(mode="none"),
+        seal=SealConfig(mode="chain"),
+        config=RecorderConfig(enforce_explicit_output=False),
+    )
+    run = rec.start_run(run_id=args.run_id, tags={"source": "wrap"})
+
+    with run.step(args.name) as st:
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        stdout = proc.stdout or ""
+        stderr = proc.stderr or ""
+        exit_code = int(proc.returncode)
+
+        step_key = run._step_prefix(1, args.name)
+        artifacts_prefix = f"{step_key}/artifacts"
+        if stdout:
+            store.put_bytes(f"{artifacts_prefix}/stdout.txt", stdout.encode("utf-8"))
+        if stderr:
+            store.put_bytes(f"{artifacts_prefix}/stderr.txt", stderr.encode("utf-8"))
+
+        dbt_artifacts = collect_dbt_artifacts(os.getcwd())
+        for name, payload in dbt_artifacts.items():
+            store.put_bytes(f"{artifacts_prefix}/{name}", payload)
+
+        st.add_metadata(
+            command=" ".join(cmd),
+            exit_code=exit_code,
+            stdout_artifact=f"{artifacts_prefix}/stdout.txt" if stdout else None,
+            stderr_artifact=f"{artifacts_prefix}/stderr.txt" if stderr else None,
+            dbt_artifacts=list(dbt_artifacts.keys()) if dbt_artifacts else [],
+        )
+
+    run.finish()
+    ok, msg = run.verify()
+    print(f"run_id: {run.run_id}")
+    print(f"verify: {ok} {msg}")
+    return 0 if proc.returncode == 0 else proc.returncode
+
+
 # -----------------------------
 # Parser
 # -----------------------------
@@ -668,6 +725,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_cleanup.add_argument("--retention-days", required=True, type=float)
     p_cleanup.add_argument("--dry-run", action="store_true", help="Only print what would be removed")
     p_cleanup.set_defaults(func=cmd_cleanup)
+
+    p_wrap = sub.add_parser("wrap", help="Run a command and capture logs (no-code)")
+    p_wrap.add_argument("--project", required=True)
+    p_wrap.add_argument("--dataset", required=True)
+    p_wrap.add_argument("--run-id", default=None)
+    p_wrap.add_argument("--name", default="command")
+    p_wrap.add_argument("cmd", nargs=argparse.REMAINDER, help="Command to run (use -- before the command)")
+    p_wrap.set_defaults(func=cmd_wrap)
 
     return p
 

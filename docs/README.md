@@ -11,5 +11,6 @@ Entry points:
 - `UI_HOME.md`
 - `RC_RELEASE.md`
 - `deck.md` (business-facing slide deck)
+- `INTEGRATION_GUIDE.md` (non-technical)
 
 Screenshots live in `docs/screens/`.

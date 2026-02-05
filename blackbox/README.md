@@ -8,6 +8,7 @@ Key areas:
 - `seal.py`: hash chain integrity verification
 - `store.py`: storage backends (local + S3)
 - `engines.py`: dataframe conversions (pandas + adapters)
+- `integrations/`: Airflow/Dagster/dbt helpers
 
 Use this package when embedding Blackbox into Python pipelines.
 

@@ -1,62 +1,54 @@
-# Integration Guide
+# Integration Guide (Non‑Technical)
 
-This guide shows how to integrate Blackbox Data into existing pandas pipelines.
+This guide lets non‑technical users run Blackbox without editing code.
 
-## Minimal Integration
+## 1) Start the server
+```bash
+blackbox-pro start
+```
+
+## 2) Run your pipeline with one command
+```bash
+blackbox --root ./.blackbox_store wrap --project acme-data --dataset demo -- python pipeline.py
+```
+
+## 3) Open the UI
+```
+http://127.0.0.1:8088/ui/home
+```
+
+### Screenshots
+![UI Home](screens/ui_home.png)
+![Run Viewer](screens/ui_run.png)
+
+---
+
+## Airflow (quick wrapper)
 ```python
-import pandas as pd
-from blackbox import Recorder, Store, DiffConfig, SnapshotConfig, SealConfig
+from blackbox import Recorder, Store
+from blackbox.integrations.airflow import blackbox_task
 
-store = Store.local("./.blackbox_store")
-rec = Recorder(
-    store=store,
-    project="acme-data",
-    dataset="users_daily",
-    diff=DiffConfig(mode="rowhash", primary_key=["id"]),
-    snapshot=SnapshotConfig(mode="auto", max_mb=50),
-    seal=SealConfig(mode="chain"),
-)
+rec = Recorder(store=Store.local("./.blackbox_store"), project="acme", dataset="prod")
 
-run = rec.start_run(tags={"env": "prod"})
-
-df0 = pd.DataFrame({"id": [1, 2, 3], "score": [10, 20, 30]})
-with run.step("normalize", input_df=df0) as st:
-    df1 = df0.copy()
-    df1["score"] = df1["score"] / 10.0
-    st.capture_output(df1)
-
-run.finish()
-ok, msg = run.verify()
-print(ok, msg)
+@blackbox_task(rec, "daily_sync", lambda: run_my_task())
+def run_my_task():
+    ...
 ```
 
-## Production Checklist
-- Use stable `project` and `dataset` names.
-- Set `primary_key` for reliable row diffs.
-- Enable `snapshot_async` for low‑latency steps.
-- Use `summary_only_threshold` to skip deep diff on high‑churn steps.
-- Use `chunk_rows` for large datasets.
-- Enforce `RecorderConfig.max_run_mb` for run size limits.
-- Enable `RecorderConfig.require_verify_for_prod` for prod runs.
-- Use `blackbox cleanup --retention-days` to enforce retention windows.
+## Dagster (quick wrapper)
+```python
+from blackbox import Recorder, Store
+from blackbox.integrations.dagster import blackbox_op
 
-## Spark / Distributed Engines (Experimental)
-For Spark/Polars/DuckDB, pass dataframe objects to steps and they will be converted
-to pandas at step boundaries (see `docs/SPARK_GUIDE.md`).
+rec = Recorder(store=Store.local("./.blackbox_store"), project="acme", dataset="prod")
 
-## CLI and API Usage
-List runs:
+@blackbox_op(rec, "daily_asset", lambda: build_asset())
+def build_asset():
+    ...
+```
+
+## dbt (no‑code)
 ```bash
-blackbox --root ./.blackbox_store list --project acme-data --dataset users_daily
+blackbox --root ./.blackbox_store wrap --project acme --dataset prod -- dbt run
 ```
-
-Report:
-```bash
-blackbox --root ./.blackbox_store report --project acme-data --dataset users_daily --run-id <RUN_ID>
-```
-
-API (token):
-```bash
-curl -H "Authorization: Bearer dev-secret-token" \
-  "http://127.0.0.1:8088/runs?project=acme-data&dataset=users_daily"
-```
+Blackbox will capture `target/run_results.json` and `target/manifest.json`.

@@ -112,6 +112,11 @@ blackbox-pro demo
 blackbox-pro wizard
 ```
 
+Run any pipeline without code changes:
+```bash
+blackbox --root ./.blackbox_store wrap --project acme-data --dataset demo -- python pipeline.py
+```
+
 ## Diff Controls
 - `DiffConfig.diff_mode`: `rows` (default), `schema`, `keys-only`.
 - `DiffConfig.summary_only_threshold`: summarize only when churn is high.

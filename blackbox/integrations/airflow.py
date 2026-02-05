@@ -1,19 +1,22 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
-from blackbox import Recorder, Run
-
-
-def airflow_tags(context: dict[str, Any]) -> dict[str, str]:
-    return {
-        "airflow_dag_id": str(context.get("dag").dag_id) if context.get("dag") else "",
-        "airflow_task_id": str(context.get("task").task_id) if context.get("task") else "",
-        "airflow_run_id": str(context.get("run_id") or ""),
-        "airflow_execution_date": str(context.get("execution_date") or ""),
-    }
+from blackbox.engines import is_dataframe_like, to_pandas
 
 
-def start_airflow_run(rec: Recorder, context: dict[str, Any], *, project: str, dataset: str) -> Run:
-    tags = {"engine": "airflow", **airflow_tags(context)}
-    return rec.start_run(tags=tags)
+def blackbox_task(recorder, name: str, func: Callable[..., Any]):
+    """
+    Wrap a task callable so it records a run and step automatically.
+    """
+    def _wrapped(*args, **kwargs):
+        run = recorder.start_run(tags={"source": "airflow"})
+        with run.step(name) as st:
+            result = func(*args, **kwargs)
+            if is_dataframe_like(result):
+                st.capture_output(to_pandas(result))
+            else:
+                st.add_metadata(result_type=str(type(result)))
+        run.finish()
+        return result
+    return _wrapped
