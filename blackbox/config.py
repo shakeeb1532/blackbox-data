@@ -29,6 +29,8 @@ class DiffConfig:
     auto_hash_group_size: int = 8
     # Cache rowhashes in-memory (weakref) for reuse within a run.
     cache_rowhash: bool = True
+    # Experimental: use native Polars hashing when inputs are Polars DataFrames.
+    native_polars: bool = False
 
 
 @dataclass(frozen=True)

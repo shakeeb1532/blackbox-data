@@ -125,6 +125,7 @@ blackbox --root ./.blackbox_store wrap --project acme-data --dataset demo -- pyt
 - `DiffConfig.auto_parallel_wide`, `auto_parallel_threshold_cols`, `auto_parallel_workers`, `auto_hash_group_size`: auto-parallel hashing for wide frames.
 - `DiffConfig.cache_rowhash`: reuse rowhashes between adjacent steps.
 - `DiffConfig.auto_parallel_wide`: auto-enable parallel hashing for wide frames.
+- `DiffConfig.native_polars`: experimental native Polars hashing (if Polars inputs).
 
 ## Snapshot Controls
 - `SnapshotConfig.mode`: `none`, `auto`, `always`.

@@ -127,7 +127,9 @@ def _mutate_df(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _benchmarks_for_size(n: int, warmup: int, runs: int, *, wide_cols: int = 0) -> list[BenchmarkResult]:
+def _benchmarks_for_size(
+    n: int, warmup: int, runs: int, *, wide_cols: int = 0, force_snapshot: bool = False
+) -> list[BenchmarkResult]:
     if wide_cols:
         df = _make_wide_df(n, wide_cols=wide_cols)
     else:
@@ -162,12 +164,13 @@ def _benchmarks_for_size(n: int, warmup: int, runs: int, *, wide_cols: int = 0) 
 
     with tempfile.TemporaryDirectory() as td:
         store = Store.local(td)
+        snapshot_cfg = SnapshotConfig(mode="always") if force_snapshot else SnapshotConfig(mode="auto", max_mb=0.6)
         rec = Recorder(
             store=store,
             project="bench",
             dataset="snapshot",
             diff=DiffConfig(mode="rowhash", primary_key=["id"]),
-            snapshot=SnapshotConfig(mode="auto", max_mb=0.6),
+            snapshot=snapshot_cfg,
             seal=SealConfig(mode="none"),
         )
         run = rec.start_run()
@@ -271,6 +274,7 @@ def main() -> int:
     )
     parser.add_argument("--warmup", type=int, default=2)
     parser.add_argument("--runs", type=int, default=5)
+    parser.add_argument("--force-snapshot", action="store_true", help="Force full snapshot writes (no size guard)")
     parser.add_argument(
         "--output",
         default=os.path.join("benchmarks", "results.json"),
@@ -287,10 +291,14 @@ def main() -> int:
     all_results: list[BenchmarkResult] = []
 
     for n in sizes:
-        all_results.extend(_benchmarks_for_size(n, warmup=args.warmup, runs=args.runs))
+        all_results.extend(
+            _benchmarks_for_size(n, warmup=args.warmup, runs=args.runs, force_snapshot=args.force_snapshot)
+        )
         if args.wide_cols and args.wide_cols > 0:
             all_results.extend(
-                _benchmarks_for_size(n, warmup=args.warmup, runs=args.runs, wide_cols=args.wide_cols)
+                _benchmarks_for_size(
+                    n, warmup=args.warmup, runs=args.runs, wide_cols=args.wide_cols, force_snapshot=args.force_snapshot
+                )
             )
 
     os.makedirs(os.path.dirname(args.output), exist_ok=True)

@@ -166,6 +166,7 @@ class StepContext:
                         auto_parallel_workers=self.run.recorder.diff.auto_parallel_workers,
                         auto_hash_group_size=self.run.recorder.diff.auto_hash_group_size,
                         cache_rowhash=self.run.recorder.diff.cache_rowhash,
+                        native_polars=self.run.recorder.diff.native_polars,
                     )
                     diff_ref = f"{artifacts_prefix}/diff.bbdelta"
                     self.run.store.put_json(diff_ref, diff_payload)
@@ -387,6 +388,7 @@ class Run:
                 hash_group_size=group_size,
                 parallel_groups=parallel_groups,
                 cache_rowhash=self.recorder.diff.cache_rowhash,
+                native_polars=self.recorder.diff.native_polars,
             ),
             "n_rows": int(len(df)),
             "n_cols": int(df.shape[1]),

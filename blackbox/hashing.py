@@ -8,6 +8,32 @@ import pandas as pd
 import numpy as np
 
 
+def _is_polars_df(obj: Any) -> bool:
+    mod = getattr(obj.__class__, "__module__", "")
+    return mod.startswith("polars")
+
+
+def _polars_hash_series(df: Any, cols: list[str]) -> list[int]:
+    import polars as pl  # type: ignore
+    if not cols:
+        return [0] * df.height
+    try:
+        series = df.select(pl.struct(cols).hash().alias("_h"))["_h"]
+    except Exception:
+        series = df.select(pl.all().hash_rows().alias("_h"))["_h"]
+    return [int(x) for x in series.to_list()]
+
+
+def _polars_pk_series(df: Any, pk: list[str]) -> list[str]:
+    import polars as pl  # type: ignore
+    if len(pk) == 1:
+        series = df.select(pl.col(pk[0]).cast(pl.Utf8).alias("_k"))["_k"]
+        return [str(x) for x in series.to_list()]
+    parts = [pl.col(c).cast(pl.Utf8) for c in pk]
+    series = df.select(pl.concat_str(parts, separator="|").alias("_k"))["_k"]
+    return [str(x) for x in series.to_list()]
+
+
 # ----------------------------
 # Schema fingerprint + diff
 # ----------------------------
@@ -163,6 +189,7 @@ def content_fingerprint_rowhash(
     hash_group_size: int = 0,
     parallel_groups: int = 0,
     cache_rowhash: bool = False,
+    native_polars: bool = False,
 ) -> dict[str, Any]:
     """
     Lightweight content fingerprint:
@@ -170,12 +197,29 @@ def content_fingerprint_rowhash(
       - aggregates into a small representative sample
     Note: Not cryptographic; sealing handles tamper evidence.
     """
-    if df.shape[0] == 0:
+    if hasattr(df, "shape") and df.shape[0] == 0:
         return {"mode": "rowhash", "label": "h64", "sample": [], "n": 0}
 
     dfx = df
     if sample_rows and sample_rows > 0 and len(df) > sample_rows:
         dfx = df.head(int(sample_rows))
+
+    if native_polars and _is_polars_df(dfx):
+        cols = [str(c) for c in dfx.columns]
+        hashes = _polars_hash_series(dfx, cols)
+        if not order_sensitive:
+            vals = np.asarray(hashes, dtype="uint64")
+            k = min(10, len(vals))
+            if k == 0:
+                take = []
+            elif len(vals) <= k:
+                take = sorted(vals.tolist())
+            else:
+                part = np.partition(vals, k - 1)[:k]
+                take = sorted(part.tolist())
+        else:
+            take = list(map(int, hashes[: min(10, len(hashes))]))
+        return {"mode": "rowhash", "label": "h64", "sample": take, "n": int(len(dfx))}
 
     cols = [str(c) for c in dfx.columns]
     hashes = _rowhash_series(
@@ -232,6 +276,7 @@ def diff_rowhash(
     auto_parallel_workers: int = 4,
     auto_hash_group_size: int = 8,
     cache_rowhash: bool = False,
+    native_polars: bool = False,
 ) -> tuple[dict[str, Any], DiffSummary]:
     """
     PK-based diff (rowhash mode).
@@ -286,6 +331,78 @@ def diff_rowhash(
     else:
         aa = a
         bb = b
+
+    if native_polars and _is_polars_df(aa) and _is_polars_df(bb):
+        # Polars-native hashing path (experimental)
+        pk = [str(x) for x in (primary_key or (["id"] if "id" in a.columns and "id" in b.columns else [str(a.columns[0])]))]
+        cols_hashed = [c for c in common_cols if c not in set(pk)]
+        a_keys = _polars_pk_series(aa, pk)
+        b_keys = _polars_pk_series(bb, pk)
+        if len(a_keys) != len(set(a_keys)):
+            raise ValueError("Primary key values must be unique in 'a'")
+        if len(b_keys) != len(set(b_keys)):
+            raise ValueError("Primary key values must be unique in 'b'")
+        if keys_only or not cols_hashed:
+            a_map = {k: 0 for k in a_keys}
+            b_map = {k: 0 for k in b_keys}
+        else:
+            a_hash = _polars_hash_series(aa, cols_hashed)
+            b_hash = _polars_hash_series(bb, cols_hashed)
+            a_map = {k: int(v) for k, v in zip(a_keys, a_hash)}
+            b_map = {k: int(v) for k, v in zip(b_keys, b_hash)}
+        a_set = set(a_map.keys())
+        b_set = set(b_map.keys())
+        added_keys = sorted(list(b_set - a_set))
+        removed_keys = sorted(list(a_set - b_set))
+        common_keys = a_set & b_set
+        if keys_only:
+            changed_keys = []
+        else:
+            changed_keys = sorted([k for k in common_keys if a_map[k] != b_map[k]])
+        added_count = len(added_keys)
+        removed_count = len(removed_keys)
+        changed_count = len(changed_keys)
+        total_keys = int(total_keys_hint or max(len(a_set), len(b_set)))
+        summary_only = False
+        if summary_only_threshold is not None and summary_only_threshold > 0:
+            ratio = (added_count + removed_count) / max(total_keys, 1)
+            if ratio >= summary_only_threshold:
+                summary_only = True
+                added_keys = []
+                removed_keys = []
+                changed_keys = []
+
+        payload: dict[str, Any] = {
+            "version": "0.1",
+            "mode": "rowhash",
+            "hash": {"algo": "polars_hash", "label": "h64"},
+            "primary_key": pk,
+            "cols_hashed": cols_hashed,
+            "added_rowhashes": [],
+            "removed_rowhashes": [],
+            "added_keys": added_keys,
+            "removed_keys": removed_keys,
+            "changed_keys": changed_keys,
+            "summary_only": bool(summary_only),
+            "summary": {"added": added_count, "removed": removed_count, "changed": changed_count},
+            "ui_hint": "summary_only_high_churn" if summary_only else None,
+            "diff_mode": diff_mode,
+            "notes": {
+                "order_sensitive": bool(order_sensitive),
+                "sample_rows": int(sample_rows or 0),
+                "hash_cols_mode": "shared",
+                "schema_changed": schema_changed,
+                "cols_only_in_left": cols_only_in_left,
+                "cols_only_in_right": cols_only_in_right,
+                "treat_schema_add_remove_as_change": bool(treat_schema_add_remove_as_change),
+                "chunk_rows": int(chunk_rows or 0),
+                "hash_group_size": int(hash_group_size or 0),
+                "parallel_groups": int(parallel_groups or 0),
+                "native_polars": True,
+            },
+        }
+        summary = DiffSummary(added=added_count, removed=removed_count, changed=changed_count)
+        return payload, summary
 
     single_pk = len(pk) == 1
     if single_pk:

@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 import time
+from contextlib import asynccontextmanager
 
 from blackbox_pro.server.api import router as api_router
 from blackbox_pro.server.ui import router as ui_router
@@ -10,7 +11,19 @@ from blackbox_pro.server.auth import expected_token, require_token
 from blackbox_pro.server.metrics import snapshot_text, record_request
 from blackbox_pro.server.audit import write_audit_event
 
-app = FastAPI(title="Blackbox Data Pro", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("[blackbox-pro] main.py =", __file__)
+    print("[blackbox-pro] expected token =", expected_token())
+    print("[blackbox-pro] routes:")
+    for r in app.routes:
+        path = getattr(r, "path", None)
+        methods = getattr(r, "methods", None)
+        print("  ", path, methods)
+    yield
+
+
+app = FastAPI(title="Blackbox Data Pro", version="0.1.0", lifespan=lifespan)
 
 # Public paths (no auth)
 _PUBLIC_PATH_PREFIXES = (
@@ -96,12 +109,4 @@ app.include_router(ui_router)
 app.include_router(api_router)
 
 
-@app.on_event("startup")
-async def _startup_debug() -> None:
-    print("[blackbox-pro] main.py =", __file__)
-    print("[blackbox-pro] expected token =", expected_token())
-    print("[blackbox-pro] routes:")
-    for r in app.routes:
-        path = getattr(r, "path", None)
-        methods = getattr(r, "methods", None)
-        print("  ", path, methods)
+#
