@@ -14,6 +14,11 @@ chains, multi-tenant auth, and a polished UI with exportable reports.
 - Report UI with summaries, drill‑downs, and exports (JSON/CSV/HTML)
 - Benchmarked diffing performance with wide‑frame improvements
 
+## Screenshots
+![UI Home](screens/ui_home.png)
+![Run Viewer](screens/ui_run.png)
+![Metrics](screens/ui_metrics.png)
+
 ## Quality Gates (RC)
 - Unit tests: passing (28/28)
 - Schemathesis: clean run with seeded data + deserializers

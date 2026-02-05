@@ -81,6 +81,8 @@ def test_ui_run_valid(client_run):
     client, run_id, token, _ = client_run
     r = client.get(f"/ui?project=acme-data&dataset=demo&run_id={run_id}&token={token}")
     assert r.status_code == 200
+    assert "Summarize this diff" in r.text
+    assert "Copy summary" in r.text
 
 
 def test_ui_run_missing(client_run):
@@ -124,12 +126,19 @@ def test_ui_exports(client_run):
     assert r.status_code == 200
     r = client.get(f"/ui/export_evidence_json?project=acme-data&dataset=demo&run_id={run_id}&token={token}")
     assert r.status_code == 200
+    r = client.get(f"/ui/export_evidence?project=acme-data&dataset=demo&run_id={run_id}&token={token}")
+    assert r.status_code == 200
+    assert r.headers.get("Content-Disposition", "").startswith("attachment; filename=evidence_")
 
 
 def test_ui_diff_keys_download(client_run):
     client, run_id, token, _ = client_run
     r = client.get(
         f"/ui/diff_keys?project=acme-data&dataset=demo&run_id={run_id}&ordinal=1&kind=added&token={token}"
+    )
+    assert r.status_code == 200
+    r = client.get(
+        f"/ui/diff_keys?project=acme-data&dataset=demo&run_id={run_id}&ordinal=1&kind=added&fmt=csv&token={token}"
     )
     assert r.status_code == 200
 

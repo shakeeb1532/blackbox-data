@@ -399,6 +399,27 @@ def _page(title: str, body: str) -> HTMLResponse:
               applyToken();
             });
           });
+          document.querySelectorAll("[data-summary-toggle]").forEach((el) => {
+            el.addEventListener("click", (e) => {
+              e.preventDefault();
+              const targetId = el.getAttribute("data-summary-toggle");
+              const target = document.getElementById(targetId);
+              if(target){
+                target.style.display = target.style.display === "none" ? "block" : "none";
+              }
+            });
+          });
+          document.querySelectorAll("[data-summary-copy]").forEach((el) => {
+            el.addEventListener("click", async (e) => {
+              e.preventDefault();
+              const text = el.getAttribute("data-summary-copy") || "";
+              try{
+                await navigator.clipboard.writeText(text);
+                el.textContent = "Copied";
+                setTimeout(() => { el.textContent = "Copy summary"; }, 1200);
+              }catch(_e){}
+            });
+          });
           applyToken();
         });
       })();
@@ -602,11 +623,16 @@ def ui(
         attention_badge = _badge("attention" if attention else "clean", "warn" if attention else "ok")
 
         # Details content
+        summary_badge = ""
+        if added or removed or changed:
+            summary_badge = _badge(f"Σ +{_h(added)}/-{_h(removed)}/Δ{_h(changed)}", "info")
+
         if view == "verbose":
             body_html = _json_pre(st)
         else:
             diff_obj = st.get("diff") or {}
             summary_text = _summarize_diff(schema_diff, diff_summary)
+            summary_id = f"summary-{st.get('ordinal', i)}"
 
             def _extract_list(obj: Any) -> tuple[list[str], bool]:
                 if isinstance(obj, dict):
@@ -645,11 +671,15 @@ def ui(
 
             body_html = f"""
             <div class="card" style="margin-top:6px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <strong>Summary</strong>
-                <span class="badge badge-info">plain English</span>
+                <div class="chips">
+                  <span class="badge badge-info">plain English</span>
+                  <a class="btn" href="#" data-summary-toggle="{summary_id}">Summarize this diff</a>
+                  <a class="btn" href="#" data-summary-copy="{_h(summary_text)}">Copy summary</a>
+                </div>
               </div>
-              <div class="muted" style="margin-top:6px;line-height:1.6;">{_h(summary_text)}</div>
+              <div id="{summary_id}" class="muted" style="margin-top:6px;line-height:1.6;display:none;">{_h(summary_text)}</div>
             </div>
             {summary_note}
             {_render_keys('Added keys', added_keys, added_trunc, 'added')}
@@ -674,6 +704,7 @@ def ui(
                 <div class="step-meta">
                   {_badge(st.get("status",""), "ok" if st.get("status")=="ok" else "warn")}
                   {attention_badge}
+                  {summary_badge}
                   {(_badge(hint, "info") if hint else "")}
                   <span class="badge badge-muted">schema +{_h(schema_added)} −{_h(schema_removed)} Δdtype:{_h(dtype_changed)}</span>
                   <span class="badge badge-muted">rows +{_h(added)} −{_h(removed)} Δ{_h(changed)}</span>
