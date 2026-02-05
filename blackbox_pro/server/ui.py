@@ -105,6 +105,28 @@ def _step_summary(step_obj: dict) -> Tuple[dict, dict, dict]:
     return inp, outp, {"schema_diff": schema_diff, "diff_summary": summary, "ui_hint": hint}
 
 
+def _summarize_diff(schema_diff: dict, diff_summary: dict) -> str:
+    added_cols = len(schema_diff.get("added_cols") or [])
+    removed_cols = len(schema_diff.get("removed_cols") or [])
+    dtype_changed = len(schema_diff.get("dtype_changed") or [])
+    added = int(diff_summary.get("added") or 0)
+    removed = int(diff_summary.get("removed") or 0)
+    changed = int(diff_summary.get("changed") or 0)
+
+    parts = []
+    if added_cols or removed_cols or dtype_changed:
+        parts.append(
+            f"Schema: +{added_cols} / -{removed_cols} / Δdtype {dtype_changed}"
+        )
+    if added or removed or changed:
+        parts.append(
+            f"Rows: +{added} / -{removed} / Δ{changed}"
+        )
+    if not parts:
+        return "No schema or row-level changes detected."
+    return " · ".join(parts)
+
+
 # -----------------------------
 # styling (pure HTML/CSS)
 # -----------------------------
@@ -584,6 +606,7 @@ def ui(
             body_html = _json_pre(st)
         else:
             diff_obj = st.get("diff") or {}
+            summary_text = _summarize_diff(schema_diff, diff_summary)
 
             def _extract_list(obj: Any) -> tuple[list[str], bool]:
                 if isinstance(obj, dict):
@@ -621,6 +644,13 @@ def ui(
             summary_note = "<div class='muted'>Diff summarized (high churn) — keys may be empty.</div>" if summary_only else ""
 
             body_html = f"""
+            <div class="card" style="margin-top:6px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <strong>Summary</strong>
+                <span class="badge badge-info">plain English</span>
+              </div>
+              <div class="muted" style="margin-top:6px;line-height:1.6;">{_h(summary_text)}</div>
+            </div>
             {summary_note}
             {_render_keys('Added keys', added_keys, added_trunc, 'added')}
             {_render_keys('Removed keys', removed_keys, removed_trunc, 'removed')}
@@ -658,7 +688,14 @@ def ui(
 
     steps_html = f"""
     <div class="card">
-      <h2>Pipeline timeline</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2>Pipeline timeline</h2>
+        <div class="chips">
+          <a class="btn" data-token-link href="/ui/export_json?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">Export JSON</a>
+          <a class="btn" data-token-link href="/ui/export_html?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">Export HTML</a>
+          <a class="btn" data-token-link href="/ui/export_evidence?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">Evidence ZIP</a>
+        </div>
+      </div>
       <div class="steps">
         {''.join(step_cards) if step_cards else "<div class='muted'>No step JSON found.</div>"}
       </div>
@@ -814,8 +851,10 @@ def ui(
       </div>
 
       <div class="card" style="margin-top:14px;">
-        <h2>Raw run.json</h2>
-        {_json_pre(run_obj)}
+        <details>
+          <summary><strong>Raw run.json</strong></summary>
+          <div style="margin-top:10px;">{_json_pre(run_obj)}</div>
+        </details>
       </div>
 
       <div class="footer">Blackbox Data Pro – run viewer</div>
@@ -873,7 +912,7 @@ def ui_metrics() -> HTMLResponse:
 
 @router.get("/ui/diff_keys", include_in_schema=False)
 def ui_diff_keys(
-    request,
+    request: Request,
     project: str,
     dataset: str,
     run_id: str,
@@ -912,7 +951,7 @@ def ui_diff_keys(
 
 
 @router.get("/ui/export_json", include_in_schema=False)
-def ui_export_json(request, project: str, dataset: str, run_id: str) -> Response:
+def ui_export_json(request: Request, project: str, dataset: str, run_id: str) -> Response:
     require_project_access(request, project)
     store = get_store()
     prefix = f"{project}/{dataset}/{run_id}"
@@ -930,7 +969,7 @@ def ui_export_json(request, project: str, dataset: str, run_id: str) -> Response
 
 
 @router.get("/ui/export_html", include_in_schema=False)
-def ui_export_html(request, project: str, dataset: str, run_id: str) -> Response:
+def ui_export_html(request: Request, project: str, dataset: str, run_id: str) -> Response:
     require_project_access(request, project)
     page = ui(project=project, dataset=dataset, run_id=run_id, view="summary")
     return Response(
@@ -941,7 +980,7 @@ def ui_export_html(request, project: str, dataset: str, run_id: str) -> Response
 
 
 @router.get("/ui/export_evidence", include_in_schema=False)
-def ui_export_evidence(request, project: str, dataset: str, run_id: str) -> Response:
+def ui_export_evidence(request: Request, project: str, dataset: str, run_id: str) -> Response:
     require_role(request, {"admin"})
     require_project_access(request, project)
     store = get_store()
@@ -987,7 +1026,7 @@ def ui_export_evidence(request, project: str, dataset: str, run_id: str) -> Resp
 
 
 @router.get("/ui/export_evidence_json", include_in_schema=False)
-def ui_export_evidence_json(request, project: str, dataset: str, run_id: str) -> Response:
+def ui_export_evidence_json(request: Request, project: str, dataset: str, run_id: str) -> Response:
     require_role(request, {"admin"})
     require_project_access(request, project)
     store = get_store()

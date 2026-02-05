@@ -116,6 +116,24 @@ def test_stats_endpoint(client_run):
     assert "runs_total" in r.json()
 
 
+def test_ui_exports(client_run):
+    client, run_id, token, _ = client_run
+    r = client.get(f"/ui/export_json?project=acme-data&dataset=demo&run_id={run_id}&token={token}")
+    assert r.status_code == 200
+    r = client.get(f"/ui/export_html?project=acme-data&dataset=demo&run_id={run_id}&token={token}")
+    assert r.status_code == 200
+    r = client.get(f"/ui/export_evidence_json?project=acme-data&dataset=demo&run_id={run_id}&token={token}")
+    assert r.status_code == 200
+
+
+def test_ui_diff_keys_download(client_run):
+    client, run_id, token, _ = client_run
+    r = client.get(
+        f"/ui/diff_keys?project=acme-data&dataset=demo&run_id={run_id}&ordinal=1&kind=added&token={token}"
+    )
+    assert r.status_code == 200
+
+
 def test_verify_ok(client_run):
     client, run_id, token, _ = client_run
     r = client.get(
