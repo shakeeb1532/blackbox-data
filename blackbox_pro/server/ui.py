@@ -130,7 +130,7 @@ def _summarize_diff(schema_diff: dict, diff_summary: dict) -> str:
 # -----------------------------
 # styling (pure HTML/CSS)
 # -----------------------------
-def _page(title: str, body: str, *, session_auth: bool = False) -> HTMLResponse:
+def _page(title: str, body: str, *, session_auth: bool = False, auth_role: str | None = None) -> HTMLResponse:
     css = """
     :root{
       --bg: #05060a;
@@ -362,6 +362,7 @@ def _page(title: str, body: str, *, session_auth: bool = False) -> HTMLResponse:
         function applyToken(){
           const token = getToken();
           const sessionAuth = document.body.dataset.sessionAuth === "1";
+          const role = (document.body.dataset.authRole || "").trim();
           document.querySelectorAll("[data-token-link]").forEach((el) => {
             try{
               const url = new URL(el.getAttribute("href"), window.location.origin);
@@ -386,10 +387,10 @@ def _page(title: str, body: str, *, session_auth: bool = False) -> HTMLResponse:
           const status = document.getElementById("auth-status");
           if(status){
             if(token){
-              status.textContent = "auth: token set";
+              status.textContent = `auth: token (${role || "unknown"})`;
               status.className = "badge badge-ok";
             }else if(sessionAuth){
-              status.textContent = "auth: session";
+              status.textContent = `auth: session (${role || "unknown"})`;
               status.className = "badge badge-ok";
             }else{
               status.textContent = "auth: no token";
@@ -435,6 +436,7 @@ def _page(title: str, body: str, *, session_auth: bool = False) -> HTMLResponse:
     </script>
     """
     session_flag = "1" if session_auth else "0"
+    role_flag = _h(auth_role or "")
     html_doc = f"""<!doctype html>
 <html>
   <head>
@@ -443,7 +445,7 @@ def _page(title: str, body: str, *, session_auth: bool = False) -> HTMLResponse:
     <title>{_h(title)}</title>
     <style>{css}</style>
   </head>
-  <body data-session-auth="{session_flag}">
+  <body data-session-auth="{session_flag}" data-auth-role="{role_flag}">
     {body}
     {script}
   </body>
@@ -462,6 +464,11 @@ def _login_form(message: str | None = None) -> HTMLResponse:
         <form method="post" action="/ui/login">
           <label class="label">Access Token</label>
           <input class="input" name="token" placeholder="Paste token" />
+          <div style="height:10px"></div>
+          <label class="label" style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" name="remember" checked />
+            Remember me on this device
+          </label>
           <div style="height:12px"></div>
           <button class="btn" type="submit">Sign In</button>
         </form>
@@ -491,6 +498,7 @@ def ui_home(
     has_query = bool(request.query_params.get("token"))
     if not (has_session or has_query):
         return _login_form()
+    role = getattr(request.state, "auth_role", None)
     store = get_store()
 
     # Discover projects/datasets/runs by listing keys.
@@ -589,7 +597,7 @@ def ui_home(
       <div class="footer">Blackbox Data Pro – UI home</div>
     </div>
     """
-    return _page("Blackbox Data Pro – Home", body, session_auth=has_session)
+    return _page("Blackbox Data Pro – Home", body, session_auth=has_session, auth_role=role)
 
 
 # -----------------------------
@@ -607,6 +615,7 @@ def ui(
     has_query = bool(request.query_params.get("token"))
     if not (has_session or has_query):
         return _login_form()
+    role = getattr(request.state, "auth_role", None)
     store = get_store()
     prefix = f"{project}/{dataset}/{run_id}"
 
@@ -631,7 +640,7 @@ def ui(
           </div>
         </div>
         """
-        return _page("Blackbox Data Pro – Not found", body, session_auth=has_session)
+        return _page("Blackbox Data Pro – Not found", body, session_auth=has_session, auth_role=role)
 
     ok, verify_msg = verify_chain_with_payloads(chain_obj, store, run_prefix=prefix)
     verify_ok = bool(ok)
@@ -935,7 +944,7 @@ def ui(
       <div class="footer">Blackbox Data Pro – run viewer</div>
     </div>
     """
-    return _page(title, body, session_auth=has_session)
+    return _page(title, body, session_auth=has_session, auth_role=role)
 
 
 @router.get("/ui/metrics", response_class=HTMLResponse, include_in_schema=False)
@@ -944,6 +953,7 @@ def ui_metrics(request: Request) -> HTMLResponse:
     has_query = bool(request.query_params.get("token"))
     if not (has_session or has_query):
         return _login_form()
+    role = getattr(request.state, "auth_role", None)
     store = get_store()
     stats = compute_stats(store)
     runs_per_day = stats.get("runs_per_day") or {}
@@ -988,7 +998,7 @@ def ui_metrics(request: Request) -> HTMLResponse:
       <div class="footer">Blackbox Data Pro – metrics</div>
     </div>
     """
-    return _page("Blackbox Data Pro – Metrics", body, session_auth=has_session)
+    return _page("Blackbox Data Pro – Metrics", body, session_auth=has_session, auth_role=role)
 
 
 @router.get("/ui/diff_keys", include_in_schema=False)
@@ -1154,15 +1164,16 @@ def ui_login_get() -> HTMLResponse:
 
 
 @router.post("/ui/login", include_in_schema=False)
-def ui_login_post(token: str = Form(...)) -> Response:
+def ui_login_post(token: str = Form(...), remember: str | None = Form(None)) -> Response:
     resp = RedirectResponse(url="/ui/home", status_code=302)
+    max_age = 60 * 60 * 24 * 30 if remember else None
     resp.set_cookie(
         "bbx_token",
         token,
         httponly=True,
         samesite="lax",
         secure=False,
-        max_age=60 * 60 * 24 * 30,
+        max_age=max_age,
     )
     return resp
 
@@ -1180,6 +1191,7 @@ def ui_docs(request: Request) -> HTMLResponse:
     has_query = bool(request.query_params.get("token"))
     if not (has_session or has_query):
         return _login_form()
+    role = getattr(request.state, "auth_role", None)
     auth_action = '<a class="btn" href="/ui/logout">Logout</a>' if has_session else '<a class="btn" href="/ui/login">Login</a>'
     body = f"""
     <div class="topbar">
@@ -1217,4 +1229,4 @@ def ui_docs(request: Request) -> HTMLResponse:
       <div class="footer">Blackbox Data Pro – docs</div>
     </div>
     """
-    return _page("Blackbox Data Pro – Docs", body, session_auth=has_session)
+    return _page("Blackbox Data Pro – Docs", body, session_auth=has_session, auth_role=role)
