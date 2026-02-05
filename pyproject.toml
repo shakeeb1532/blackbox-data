@@ -21,6 +21,10 @@ dependencies = [
 s3 = [
   "boto3>=1.28",
 ]
+engines = [
+  "polars>=0.20",
+  "duckdb>=1.0",
+]
 pro = [
   "fastapi>=0.110",
   "uvicorn>=0.27",

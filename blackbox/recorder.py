@@ -347,6 +347,23 @@ class Run:
         self._step_counter += 1
         return StepContext(run=self, name=name, ordinal=self._step_counter, input_df=input_df, metadata=metadata)
 
+    def step_sql(
+        self,
+        name: str,
+        *,
+        conn: Any,
+        sql: str,
+        input_df: pd.DataFrame | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Convenience helper to execute DuckDB SQL and capture output as a step.
+        """
+        from .engines import duckdb_sql_to_pandas
+        with self.step(name, input_df=input_df, metadata=metadata) as st:
+            out = duckdb_sql_to_pandas(conn, sql)
+            st.capture_output(out)
+
     # Buffered events
     def add_event(self, kind: str, message: str, *, data: dict[str, Any] | None = None) -> None:
         if self._events is None:

@@ -14,6 +14,7 @@ Blackbox Data is a lightweight, tamper-evident forensic recorder for pandas data
 - Snapshot artifacts (Parquet) with size controls.
 - Tamper-evident hash chain.
 - CLI for listing, verification, and reports.
+- Engine adapters: pandas, Polars, PyArrow, DuckDB (SQL).
 
 ## Architecture
 ```mermaid
@@ -43,6 +44,11 @@ python3 -m pip install -e ".[pro]"
 Warehouse adapters:
 ```bash
 python3 -m pip install -e ".[pro,warehouse]"
+```
+
+Optional engines (Polars + DuckDB):
+```bash
+python3 -m pip install -e ".[pro,engines]"
 ```
 
 ```python
