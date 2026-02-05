@@ -54,3 +54,4 @@ def test_evidence_bundle_signature(tmp_path, monkeypatch):
             with zf.open(name) as f:
                 data = f.read()
             assert hashlib.sha256(data).hexdigest() == expected
+        assert "diff_summaries.json" in zf.namelist()
