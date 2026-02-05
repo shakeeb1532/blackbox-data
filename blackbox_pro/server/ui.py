@@ -1081,6 +1081,26 @@ def ui_export_evidence(request: Request, project: str, dataset: str, run_id: str
     if not run_obj or not chain_obj:
         return Response(content="run not found", media_type="text/plain", status_code=404)
     ok, msg = verify_chain_with_payloads(chain_obj, store, run_prefix=prefix)
+    diff_summaries = {"steps": []}
+    for s in (run_obj.get("steps") or []):
+        step_path = s.get("path")
+        if not step_path:
+            continue
+        step_obj = _get_json_or_none(store, f"{prefix}/{step_path}")
+        if not step_obj:
+            continue
+        diff = step_obj.get("diff") or {}
+        summary = diff.get("summary") or {}
+        diff_summaries["steps"].append(
+            {
+                "ordinal": step_obj.get("ordinal"),
+                "name": step_obj.get("name"),
+                "summary": summary,
+                "summary_only": diff.get("summary_only"),
+                "ui_hint": diff.get("ui_hint"),
+            }
+        )
+
     verification = {
         "verified_at": utc_now_iso(),
         "ok": bool(ok),
@@ -1092,10 +1112,12 @@ def ui_export_evidence(request: Request, project: str, dataset: str, run_id: str
     chain_bytes = json.dumps(chain_obj, ensure_ascii=False, indent=2).encode("utf-8")
     verification_bytes = json.dumps(verification, ensure_ascii=False, indent=2).encode("utf-8")
     meta_bytes = json.dumps({"project": project, "dataset": dataset, "run_id": run_id}, ensure_ascii=False, indent=2).encode("utf-8")
+    diff_summaries_bytes = json.dumps(diff_summaries, ensure_ascii=False, indent=2).encode("utf-8")
     manifest = {
         "run.json": hashlib.sha256(run_bytes).hexdigest(),
         "chain.json": hashlib.sha256(chain_bytes).hexdigest(),
         "verification.json": hashlib.sha256(verification_bytes).hexdigest(),
+        "diff_summaries.json": hashlib.sha256(diff_summaries_bytes).hexdigest(),
         "meta.json": hashlib.sha256(meta_bytes).hexdigest(),
     }
     manifest_bytes = json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True).encode("utf-8")
@@ -1106,6 +1128,7 @@ def ui_export_evidence(request: Request, project: str, dataset: str, run_id: str
         zf.writestr("run.json", run_bytes)
         zf.writestr("chain.json", chain_bytes)
         zf.writestr("verification.json", verification_bytes)
+        zf.writestr("diff_summaries.json", diff_summaries_bytes)
         zf.writestr("meta.json", meta_bytes)
         zf.writestr("manifest.json", manifest_bytes)
     buf.seek(0)

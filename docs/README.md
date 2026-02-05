@@ -12,5 +12,6 @@ Entry points:
 - `RC_RELEASE.md`
 - `deck.md` (business-facing slide deck)
 - `INTEGRATION_GUIDE.md` (non-technical)
+- `GITHUB_ACTIONS.md` (CI integration example)
 
 Screenshots live in `docs/screens/`.

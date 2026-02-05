@@ -98,6 +98,11 @@ flowchart TB
 - Increases confidence in data
 
 ---
+## Demo Scenarios
+- Detect silent data poisoning before model training  
+- Audit trail for financial reporting dataset  
+
+---
 ## Call to Action
 - Try a demo run in minutes
 - Review pipeline changes in the UI

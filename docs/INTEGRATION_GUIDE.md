@@ -17,6 +17,10 @@ blackbox --root ./.blackbox_store wrap --project acme-data --dataset demo -- pyt
 http://127.0.0.1:8088/ui/home
 ```
 
+## Demo Scenarios
+- Detect silent data poisoning before model training
+- Audit trail for financial reporting dataset
+
 ### Screenshots
 ![UI Home](screens/ui_home.png)
 ![Run Viewer](screens/ui_run.png)

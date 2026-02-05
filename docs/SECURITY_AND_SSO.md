@@ -17,6 +17,15 @@ Legacy dev token (not recommended):
 export BLACKBOX_PRO_ALLOW_DEV_TOKEN=1
 ```
 
+## Multi-User Roles
+- **Viewer**: read-only reports and UI
+- **Admin**: verify runs, export evidence, manage audit operations
+
+## Token Rotation
+- Update `BLACKBOX_PRO_TOKEN_FILE` or `BLACKBOX_PRO_TOKENS`
+- Restart the server to pick up new tokens
+- Use short-lived tokens for sensitive environments
+
 ## OIDC JWT (optional)
 If you want OIDC‑style tokens, you can use issuer + JWKS:
 ```bash

@@ -54,6 +54,30 @@ def _sanitize_component(value: str, *, field: str) -> str:
     return s
 
 
+def _diff_summaries(store: Store, prefix: str, run_obj: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {"steps": []}
+    for s in (run_obj.get("steps") or []):
+        step_path = s.get("path")
+        if not step_path:
+            continue
+        try:
+            step_obj = store.get_json(f"{prefix}/{step_path}")
+        except FileNotFoundError:
+            continue
+        diff = step_obj.get("diff") or {}
+        summary = diff.get("summary") or {}
+        out["steps"].append(
+            {
+                "ordinal": step_obj.get("ordinal"),
+                "name": step_obj.get("name"),
+                "summary": summary,
+                "summary_only": diff.get("summary_only"),
+                "ui_hint": diff.get("ui_hint"),
+            }
+        )
+    return out
+
+
 @router.get("/runs")
 def list_runs(request: Request, project: NameType, dataset: NameType) -> dict[str, Any]:
     project = _sanitize_component(project, field="project")
@@ -232,6 +256,7 @@ def evidence_bundle(request: Request, project: NameType, dataset: NameType, run_
         raise HTTPException(status_code=404, detail="Run not found")
 
     ok, msg = verify_chain_with_payloads(chain_obj, store, run_prefix=prefix)
+    diff_summaries = _diff_summaries(store, prefix, run_obj)
     verification = {
         "verified_at": utc_now_iso(),
         "ok": bool(ok),
@@ -246,10 +271,12 @@ def evidence_bundle(request: Request, project: NameType, dataset: NameType, run_
     verification_bytes = json.dumps(verification, ensure_ascii=False, indent=2).encode("utf-8")
     meta_bytes = json.dumps({"project": project, "dataset": dataset, "run_id": run_id}, ensure_ascii=False, indent=2).encode("utf-8")
 
+    diff_summaries_bytes = json.dumps(diff_summaries, ensure_ascii=False, indent=2).encode("utf-8")
     manifest = {
         "run.json": hashlib.sha256(run_bytes).hexdigest(),
         "chain.json": hashlib.sha256(chain_bytes).hexdigest(),
         "verification.json": hashlib.sha256(verification_bytes).hexdigest(),
+        "diff_summaries.json": hashlib.sha256(diff_summaries_bytes).hexdigest(),
         "meta.json": hashlib.sha256(meta_bytes).hexdigest(),
     }
     manifest_bytes = json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True).encode("utf-8")
@@ -284,6 +311,7 @@ def evidence_bundle(request: Request, project: NameType, dataset: NameType, run_
         zf.writestr("run.json", run_bytes)
         zf.writestr("chain.json", chain_bytes)
         zf.writestr("verification.json", verification_bytes)
+        zf.writestr("diff_summaries.json", diff_summaries_bytes)
         zf.writestr("meta.json", meta_bytes)
         zf.writestr("manifest.json", manifest_bytes)
         if signature:

@@ -57,6 +57,12 @@ One-command quickstart:
 python3 -m venv .venv && source .venv/bin/activate && python3 -m pip install -U pip && python3 -m pip install -e ".[pro]" && blackbox-pro serve --host 0.0.0.0 --port 8088
 ```
 
+Enterprise adoption shortcuts:
+```bash
+pip install "blackbox-data[pro]"
+docker run -p 8088:8088 -e BLACKBOX_PRO_TOKEN=your-token -v $(pwd)/.blackbox_store:/data/.blackbox_store blackbox-data
+```
+
 Local dev (step-by-step):
 ```bash
 python3 -m venv .venv
@@ -240,6 +246,8 @@ Docker Compose:
 docker compose up -d
 ```
 
+GitHub Actions example: `docs/GITHUB_ACTIONS.md`
+
 Export a full run bundle:
 ```bash
 blackbox-pro export --project acme-data --dataset demo --run <run_id> --format zip
@@ -270,6 +278,15 @@ Environment variables:
 - Treat tokens as secrets; scope tokens to tenants when possible.
 - Evidence bundles + audit hash chains provide tamper-evident integrity.
 
+## Multi-User Roles
+- **Viewer**: read-only reports and UI.
+- **Admin**: verify runs, export evidence, and manage audit operations.
+
+## Token Rotation
+- Prefer `BLACKBOX_PRO_TOKEN_FILE` or `BLACKBOX_PRO_TOKENS`.
+- Rotate by updating the token file and restarting the server.
+- Use short-lived tokens for high-sensitivity environments.
+
 ## Cybersecurity Applications
 - **Forensic integrity:** detect tampering in pipeline outputs with hash‑chain verification.
 - **Incident response:** export evidence bundles for post‑incident review and audit.
@@ -280,6 +297,14 @@ Environment variables:
 - OIDC/JWT auth + multi-tenant RBAC
 - Warehouse adapters (Snowflake, BigQuery, Redshift, Postgres/MySQL)
 - Usage dashboards (`/ui/metrics`)
+
+## Evidence Package (Download)
+The “Download Evidence Package” includes:
+- `run.json`
+- `chain.json`
+- `diff_summaries.json`
+- `manifest.json`
+- optional `signature.json` / `manifest.json.asc`
 
 ## Versioning
 Semantic-ish versioning with release notes in `CHANGELOG.md`.
