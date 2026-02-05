@@ -97,6 +97,14 @@ blackbox --root ./.blackbox_store verify --project acme-data --dataset demo --ru
 Optimized for up to ~1M rows per step. Larger datasets are supported via chunking.
 Use `DiffConfig.chunk_rows` (for example, `250_000`) to reduce peak memory and improve progress reporting.
 
+## Benchmarks
+Run micro-benchmarks and write JSON/CSV outputs:
+```bash
+.venv/bin/python -m benchmarks.run_benchmarks --sizes 1000000 --wide-cols 50 --runs 3 --warmup 1 \
+  --output reports/benchmarks.json --output-csv reports/benchmarks.csv
+```
+Results summary: `BENCHMARKS.md`.
+
 ## Installation + Deployment
 Supported Python: 3.10, 3.11, 3.12.  
 Tested OS: macOS, Linux.

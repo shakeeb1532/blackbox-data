@@ -5,6 +5,7 @@ from typing import Any
 import weakref
 
 import pandas as pd
+import numpy as np
 
 
 # ----------------------------
@@ -186,9 +187,18 @@ def content_fingerprint_rowhash(
     )
 
     if not order_sensitive:
-        hashes = hashes.sort_values(kind="mergesort")
-
-    take = hashes.head(min(10, len(hashes))).astype("uint64").tolist()
+        vals = hashes.to_numpy(copy=False)
+        k = min(10, len(vals))
+        if k == 0:
+            take = []
+        elif len(vals) <= k:
+            take = sorted(vals.astype("uint64").tolist())
+        else:
+            # Faster than full sort for large frames: partition to k smallest.
+            part = np.partition(vals, k - 1)[:k]
+            take = sorted(part.astype("uint64").tolist())
+    else:
+        take = hashes.head(min(10, len(hashes))).astype("uint64").tolist()
     return {"mode": "rowhash", "label": "h64", "sample": take, "n": int(len(dfx))}
 
 
