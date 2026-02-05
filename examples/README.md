@@ -10,3 +10,7 @@ Run:
 ```bash
 .venv/bin/python examples/demo_pro.py
 ```
+
+Outputs:
+- A demo run in `./.blackbox_store`
+- A verified chain for UI exploration

@@ -10,3 +10,8 @@ Key areas:
 - `cli.py`: `blackbox-pro` CLI (serve, apikey, export)
 
 Use this package to run the local Pro server or integrate with your infra.
+
+Notes:
+- UI supports login sessions (cookie-based) and `?token=` fallback.
+- Roles: viewer (read-only) and admin (verify/export).
+- Evidence ZIP includes `diff_summaries.json` and optional signatures.

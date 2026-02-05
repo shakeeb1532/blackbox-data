@@ -13,5 +13,8 @@ Entry points:
 - `deck.md` (business-facing slide deck)
 - `INTEGRATION_GUIDE.md` (non-technical)
 - `GITHUB_ACTIONS.md` (CI integration example)
+- `CYBERSECURITY.md` (security positioning)
+
+Screenshots live in `docs/screens/`.
 
 Screenshots live in `docs/screens/`.

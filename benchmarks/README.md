@@ -8,4 +8,9 @@ Run:
   --output reports/benchmarks.json --output-csv reports/benchmarks.csv
 ```
 
+Force full snapshot writes (no size guard):
+```bash
+.venv/bin/python -m benchmarks.run_benchmarks --sizes 1000000 --force-snapshot
+```
+
 Summary results live in `BENCHMARKS.md` at repo root.

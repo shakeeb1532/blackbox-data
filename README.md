@@ -50,6 +50,7 @@ flowchart LR
 - Row hashes detect added/removed/changed keys without storing full data.
 - A hash chain links run and step artifacts for tamper-evident integrity.
 - Pro server exposes UI + exports for review and sharing.
+- UI login stores a session cookie so you don’t add `?token=` to every URL.
 
 ## Quickstart
 One-command quickstart:
@@ -156,6 +157,7 @@ Wrap captures:
 - Command, exit code
 - stdout/stderr logs
 - dbt artifacts if present (`target/run_results.json`, `target/manifest.json`)
+- Stores results under a new run with a verified chain
 
 Pro CLI extras:
 ```bash

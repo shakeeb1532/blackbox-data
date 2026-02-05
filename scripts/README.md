@@ -6,3 +6,4 @@ Examples:
 - `capture_screenshots.py`: captures UI screenshots (Playwright)
 - `make_demo_run.py`: generate demo run data
 - `quickstart.sh`: one-command local install + wizard start
+- `schemathesis_run.sh`: API fuzzing run (if present in your env)

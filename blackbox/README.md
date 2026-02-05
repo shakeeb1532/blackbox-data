@@ -12,6 +12,11 @@ Key areas:
 
 Use this package when embedding Blackbox into Python pipelines.
 
+Key configuration:
+- `DiffConfig`: diff mode, chunking, summary-only threshold, native Polars (experimental)
+- `SnapshotConfig`: snapshot size controls and sampling
+- `RecorderConfig`: compression, async snapshots, retention policy
+
 DuckDB helper:
 ```python
 import duckdb

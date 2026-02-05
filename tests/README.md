@@ -6,6 +6,7 @@ Pytest suite covering:
 - tamper detection
 - evidence bundles
 - core diffing logic
+- adapters (Airflow/Dagster/dbt)
 
 Run:
 ```bash
