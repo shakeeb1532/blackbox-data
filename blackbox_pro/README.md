@@ -1,29 +1,12 @@
-# Blackbox Data Pro (Local Server)
+# blackbox_pro (Pro server + UI)
 
-Blackbox Data Pro provides a local API server and a clean HTML UI for browsing runs, verifying integrity, and inspecting diffs.
+FastAPI server and HTML UI for browsing runs, diffs, exports, and evidence.
 
-## Run the Server
-```bash
-blackbox-pro serve --root ./.blackbox_store --host 127.0.0.1 --port 8088
-```
+Key areas:
+- `server/main.py`: app wiring + middleware
+- `server/api.py`: authenticated API routes
+- `server/ui.py`: HTML UI rendering
+- `server/auth.py`: token, RBAC, OIDC/JWT helpers
+- `cli.py`: `blackbox-pro` CLI (serve, apikey, export)
 
-Optional token:
-```bash
-BLACKBOX_PRO_TOKEN=dev-secret-token blackbox-pro serve --root ./.blackbox_store
-```
-
-## UI
-Open in a browser:
-- `http://127.0.0.1:8088/ui/home`
-
-## API
-- `GET /report`
-- `GET /report_verbose`
-- `GET /verify`
-
-These endpoints are documented in the auto-generated API docs:
-- `http://127.0.0.1:8088/docs`
-
-## Notes
-- This is a local-first MVP. Authentication is a simple bearer token.
-- The UI reads from the same storage root as the CLI.
+Use this package to run the local Pro server or integrate with your infra.

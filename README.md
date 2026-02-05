@@ -15,6 +15,17 @@ Blackbox Data is a lightweight, tamper-evident forensic recorder for pandas data
 - Tamper-evident hash chain.
 - CLI for listing, verification, and reports.
 
+## Architecture
+```mermaid
+flowchart LR
+  A["Pandas Pipeline"] --> B["Recorder (blackbox)"]
+  B --> C["Artifacts + Metadata"]
+  C --> D["Local/S3 Store"]
+  D --> E["Pro Server API"]
+  E --> F["UI + Exports"]
+  E --> G["Evidence Bundle + Verify"]
+```
+
 ## Quickstart
 One-command quickstart:
 ```bash
