@@ -41,6 +41,16 @@ python3 -m pip install -U pip
 python3 -m pip install -e ".[pro]"
 ```
 
+Non‑technical quickstart (guided):
+```bash
+blackbox-pro wizard
+```
+
+Simplest start (auto token file):
+```bash
+blackbox-pro start
+```
+
 Warehouse adapters:
 ```bash
 python3 -m pip install -e ".[pro,warehouse]"
@@ -93,6 +103,13 @@ blackbox --root ./.blackbox_store report --project acme-data --dataset demo --ru
 Verify:
 ```bash
 blackbox --root ./.blackbox_store verify --project acme-data --dataset demo --run-id <RUN_ID>
+```
+
+Beginner-friendly Pro CLI:
+```bash
+blackbox-pro start
+blackbox-pro demo
+blackbox-pro wizard
 ```
 
 ## Diff Controls

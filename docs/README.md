@@ -9,5 +9,6 @@ Entry points:
 - `TROUBLESHOOTING.md`
 - `UI_HOME.md`
 - `RC_RELEASE.md`
+- `deck.md` (business-facing slide deck)
 
 Screenshots live in `docs/screens/`.

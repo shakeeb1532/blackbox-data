@@ -14,6 +14,16 @@ python3 -m pip install -U pip
 python3 -m pip install -e ".[pro]"
 ```
 
+## Beginner-friendly (no flags)
+```bash
+blackbox-pro wizard
+```
+
+Simplest start (auto token file):
+```bash
+blackbox-pro start
+```
+
 Warehouse adapters (optional):
 ```bash
 python3 -m pip install -e ".[pro,warehouse]"
