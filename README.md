@@ -2,6 +2,24 @@
 
 Blackbox Data is a lightweight, tamper-evident forensic recorder for pandas data pipelines. It captures what changed between steps, stores optional artifacts, and produces a verifiable audit trail.
 
+## Table of Contents
+- Why It Exists
+- Core Features
+- Architecture
+- How It Works
+- Quickstart
+- CLI
+- Diff Controls
+- Snapshot Controls
+- Benchmarks
+- Installation + Deployment
+- Security Model
+- Cybersecurity Applications
+- Enterprise Extensions
+- Local Store Layout
+- Testing
+- Repository Layout
+
 ## Why It Exists
 - You need step-by-step change evidence for datasets.
 - You want reproducible, investigation-friendly logs.
@@ -27,6 +45,12 @@ flowchart LR
   E --> G["Evidence Bundle + Verify"]
 ```
 
+## How It Works
+- Each step captures input/output metadata and optional snapshots.
+- Row hashes detect added/removed/changed keys without storing full data.
+- A hash chain links run and step artifacts for tamper-evident integrity.
+- Pro server exposes UI + exports for review and sharing.
+
 ## Quickstart
 One-command quickstart:
 ```bash
@@ -49,6 +73,11 @@ blackbox-pro wizard
 Simplest start (auto token file):
 ```bash
 blackbox-pro start
+```
+
+Pro UI login:
+```
+http://127.0.0.1:8088/ui/login
 ```
 
 Warehouse adapters:
@@ -117,6 +146,49 @@ Run any pipeline without code changes:
 blackbox --root ./.blackbox_store wrap --project acme-data --dataset demo -- python pipeline.py
 ```
 
+Wrap captures:
+- Command, exit code
+- stdout/stderr logs
+- dbt artifacts if present (`target/run_results.json`, `target/manifest.json`)
+
+Pro CLI extras:
+```bash
+blackbox-pro export --project acme-data --dataset demo --run <run_id> --format zip
+blackbox-pro apikey --role admin --token-file ./.blackbox_tokens --show-line
+```
+
+## Adapters (Airflow / Dagster / dbt)
+Airflow (single run per task):
+```python
+from blackbox import Recorder, Store
+from blackbox.integrations.airflow import blackbox_task
+
+rec = Recorder(store=Store.local("./.blackbox_store"), project="acme", dataset="prod")
+task = blackbox_task(rec, "daily_sync", lambda: run_task())
+task()
+```
+
+Airflow (single run for multiple tasks):
+```python
+from blackbox.integrations.airflow import blackbox_task_in_run
+run = rec.start_run(tags={"source": "airflow"})
+blackbox_task_in_run(run, "task_a", lambda: do_a())()
+blackbox_task_in_run(run, "task_b", lambda: do_b())()
+run.finish()
+```
+
+Dagster (single run per op):
+```python
+from blackbox.integrations.dagster import blackbox_op
+op = blackbox_op(rec, "daily_asset", lambda: build_asset())
+op()
+```
+
+dbt (no-code):
+```bash
+blackbox --root ./.blackbox_store wrap --project acme --dataset prod -- dbt run
+```
+
 ## Diff Controls
 - `DiffConfig.diff_mode`: `rows` (default), `schema`, `keys-only`.
 - `DiffConfig.summary_only_threshold`: summarize only when churn is high.
@@ -142,6 +214,10 @@ Run micro-benchmarks and write JSON/CSV outputs:
 ```bash
 .venv/bin/python -m benchmarks.run_benchmarks --sizes 1000000 --wide-cols 50 --runs 3 --warmup 1 \
   --output reports/benchmarks.json --output-csv reports/benchmarks.csv
+```
+Force full snapshot writes:
+```bash
+.venv/bin/python -m benchmarks.run_benchmarks --sizes 1000000 --force-snapshot
 ```
 Results summary: `BENCHMARKS.md`.
 
@@ -180,8 +256,17 @@ Environment variables:
 - `BLACKBOX_PRO_OIDC_JWKS_URL`: override JWKS URL
 - `BLACKBOX_WAREHOUSE_CONFIG`: warehouse config YAML path
 
+## UI + API Endpoints (high-level)
+- UI: `/ui/home`, `/ui`, `/ui/metrics`, `/ui/docs`
+- API: `/runs`, `/report`, `/report_verbose`, `/verify`
+- Exports: `/ui/export_json`, `/ui/export_html`, `/ui/export_evidence`
+
+## Evidence Bundles
+- Evidence ZIP includes `run.json`, `chain.json`, and a manifest.
+- Optional HMAC/PGP signatures are supported (see `docs/SECURITY_AND_SSO.md`).
+
 ## Security Model
-- API uses Bearer token auth; UI routes accept `?token=` for convenience.
+- API uses Bearer token auth; UI supports login cookie and `?token=` fallback.
 - Treat tokens as secrets; scope tokens to tenants when possible.
 - Evidence bundles + audit hash chains provide tamper-evident integrity.
 
