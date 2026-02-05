@@ -243,9 +243,11 @@ def diff_rowhash(
         aa = a
         bb = b
 
-    if len(pk) == 1:
-        a_pk = _normalize_pk_series(aa[pk[0]])
-        b_pk = _normalize_pk_series(bb[pk[0]])
+    single_pk = len(pk) == 1
+    if single_pk:
+        # Avoid string conversions for performance; convert to string only for output.
+        a_pk = aa[pk[0]]
+        b_pk = bb[pk[0]]
     else:
         a_pk = aa[pk].astype("string").agg("|".join, axis=1)
         b_pk = bb[pk].astype("string").agg("|".join, axis=1)
@@ -329,8 +331,8 @@ def diff_rowhash(
                 cache_rowhash=cache_rowhash,
             )
 
-        a_map = pd.Series(a_hash.values, index=pd.Index(a_pk.values, dtype="string"))
-        b_map = pd.Series(b_hash.values, index=pd.Index(b_pk.values, dtype="string"))
+        a_map = pd.Series(a_hash.values, index=pd.Index(a_pk.values))
+        b_map = pd.Series(b_hash.values, index=pd.Index(b_pk.values))
 
         a_idx = a_map.index
         b_idx = b_map.index
@@ -339,7 +341,7 @@ def diff_rowhash(
         common_idx = a_idx.intersection(b_idx, sort=False)
         added_count = int(added_idx.size)
         removed_count = int(removed_idx.size)
-        common_keys = set(common_idx.astype("string").tolist())
+        common_keys = set(common_idx.tolist())
 
     if keys_only:
         changed_count = 0
@@ -380,10 +382,10 @@ def diff_rowhash(
             else:
                 changed_keys = sorted([k for k in common_keys if a_map[k] != b_map[k]])
         else:
-            added_keys = sorted(added_idx.astype("string").tolist())
-            removed_keys = sorted(removed_idx.astype("string").tolist())
+            added_keys = sorted([str(x) for x in added_idx.tolist()])
+            removed_keys = sorted([str(x) for x in removed_idx.tolist()])
             if common_idx.size and changed_mask is not None:
-                changed_keys = common_idx[changed_mask].astype("string").tolist()
+                changed_keys = [str(x) for x in common_idx[changed_mask].tolist()]
             else:
                 changed_keys = []
     else:
