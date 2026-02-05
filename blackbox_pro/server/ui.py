@@ -894,7 +894,7 @@ def ui(
       <div class="chips">
         <a class="btn" data-token-link href="/ui/export_json?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">Export JSON</a>
         <a class="btn" data-token-link href="/ui/export_html?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">Export HTML</a>
-        <a class="btn" data-token-link href="/ui/export_evidence?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">Evidence ZIP</a>
+        <a class="btn" data-token-link href="/ui/export_evidence?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">Download Evidence Package</a>
         <a class="btn" data-token-link href="/ui/export_evidence_json?project={_h(project)}&dataset={_h(dataset)}&run_id={_h(run_id)}">Evidence JSON</a>
       </div>
     </div>
