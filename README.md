@@ -175,4 +175,15 @@ Run the full suite with:
 ```bash
 .venv/bin/python -m pytest
 ```
+
+## Repository Layout
+- `blackbox/`: core recorder + diffing engine
+- `blackbox_pro/`: API + UI server
+- `bb/`: CLI entrypoint
+- `docs/`: product docs + guides
+- `examples/`: demo pipelines
+- `benchmarks/`: performance + security test harness
+- `scripts/`: utilities (screenshots, Schemathesis runs)
+- `tests/`: pytest coverage
+- `config/`: example configs (warehouses)
 - Policy controls: max run size, prod verification, retention windows (see `RecorderConfig`)
