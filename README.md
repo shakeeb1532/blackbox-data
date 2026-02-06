@@ -72,6 +72,14 @@ python3 -m pip install -U pip
 python3 -m pip install -e ".[pro]"
 ```
 
+Windows PowerShell:
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -U pip
+python -m pip install -e ".[pro]"
+```
+
 Non‑technical quickstart (guided):
 ```bash
 blackbox-pro wizard

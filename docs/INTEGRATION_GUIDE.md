@@ -7,9 +7,19 @@ This guide lets non‑technical users run Blackbox without editing code.
 blackbox-pro start
 ```
 
+Windows:
+```powershell
+blackbox-pro start
+```
+
 ## 2) Run your pipeline with one command
 ```bash
 blackbox --root ./.blackbox_store wrap --project acme-data --dataset demo -- python pipeline.py
+```
+
+Windows:
+```powershell
+blackbox --root .\.blackbox_store wrap --project acme-data --dataset demo -- python pipeline.py
 ```
 
 ## 3) Open the UI

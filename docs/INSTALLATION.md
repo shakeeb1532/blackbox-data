@@ -14,6 +14,24 @@ python3 -m pip install -U pip
 python3 -m pip install -e ".[pro]"
 ```
 
+## Windows (PowerShell)
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -U pip
+python -m pip install -e ".[pro]"
+```
+
+Start the server:
+```powershell
+blackbox-pro start
+```
+
+Open the UI:
+```
+http://127.0.0.1:8088/ui/login
+```
+
 ## Beginner-friendly (no flags)
 ```bash
 blackbox-pro wizard
