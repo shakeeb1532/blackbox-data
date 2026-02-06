@@ -4,6 +4,7 @@ import html
 import json
 import hashlib
 from typing import Any, Dict, List, Optional, Tuple
+import re
 
 from fastapi import APIRouter, Query, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -504,15 +505,23 @@ def ui_home(
 
     # Discover projects/datasets/runs using directory listing to avoid files like _audit.log.jsonl
     # Only include projects that have at least one dataset directory.
-    projects = [p for p in store.list_dirs("") if store.list_dirs(p)]
+    valid = re.compile(r"^[A-Za-z0-9._-]+$")
+    def _is_valid_name(name: str) -> bool:
+        if not valid.match(name):
+            return False
+        if name.endswith(".jsonl") or name.startswith("_"):
+            return False
+        return True
+
+    projects = [p for p in store.list_dirs("") if _is_valid_name(p) and store.list_dirs(p)]
     sel_project = project or (projects[0] if projects else "")
 
-    datasets = store.list_dirs(sel_project) if sel_project else []
+    datasets = [d for d in (store.list_dirs(sel_project) if sel_project else []) if _is_valid_name(d)]
     sel_dataset = dataset or (datasets[0] if datasets else "")
 
     runs: List[str] = []
     if sel_project and sel_dataset:
-        runs = store.list_dirs(f"{sel_project}/{sel_dataset}")
+        runs = [r for r in store.list_dirs(f"{sel_project}/{sel_dataset}") if _is_valid_name(r)]
 
     sel_run = run_id or (runs[-1] if runs else "")
     can_open = bool(sel_project and sel_dataset and sel_run)
