@@ -503,7 +503,8 @@ def ui_home(
     store = get_store()
 
     # Discover projects/datasets/runs using directory listing to avoid files like _audit.log.jsonl
-    projects = store.list_dirs("")
+    # Only include projects that have at least one dataset directory.
+    projects = [p for p in store.list_dirs("") if store.list_dirs(p)]
     sel_project = project or (projects[0] if projects else "")
 
     datasets = store.list_dirs(sel_project) if sel_project else []
@@ -514,6 +515,7 @@ def ui_home(
         runs = store.list_dirs(f"{sel_project}/{sel_dataset}")
 
     sel_run = run_id or (runs[-1] if runs else "")
+    can_open = bool(sel_project and sel_dataset and sel_run)
 
     # Demo gallery: find demo runs by tag if available.
     demo_cards: list[str] = []
@@ -577,14 +579,14 @@ def ui_home(
             <div class="field">
               <label>Dataset</label>
               <select name="dataset">
-                {''.join([f"<option value='{_h(d)}' {'selected' if d==sel_dataset else ''}>{_h(d)}</option>" for d in datasets])}
+                {''.join([f"<option value='{_h(d)}' {'selected' if d==sel_dataset else ''}>{_h(d)}</option>" for d in datasets]) if datasets else "<option disabled selected>No datasets</option>"}
               </select>
             </div>
 
             <div class="field">
               <label>Run</label>
               <select name="run_id">
-                {''.join([f"<option value='{_h(r)}' {'selected' if r==sel_run else ''}>{_h(r)}</option>" for r in runs])}
+                {''.join([f"<option value='{_h(r)}' {'selected' if r==sel_run else ''}>{_h(r)}</option>" for r in runs]) if runs else "<option disabled selected>No runs</option>"}
               </select>
             </div>
 
@@ -597,7 +599,7 @@ def ui_home(
             </div>
 
             <div class="field" style="min-width:140px;">
-              <button class="btn" type="submit" style="height:42px;cursor:pointer;" {'disabled' if not sel_run else ''}>Open</button>
+              <button class="btn" type="submit" style="height:42px;cursor:pointer;" {'disabled' if not can_open else ''}>Open</button>
             </div>
           </div>
         </form>
