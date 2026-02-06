@@ -767,23 +767,37 @@ def ui(
             summary_only = bool(diff_obj.get("summary_only"))
             summary_note = "<div class='muted'>Diff summarized (high churn) — keys may be empty.</div>" if summary_only else ""
 
-            body_html = f"""
-            <div class="card" style="margin-top:6px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                <strong>Summary</strong>
-                <div class="chips">
-                  <span class="badge badge-info">plain English</span>
-                  <a class="btn" href="#" data-summary-toggle="{summary_id}">Summarize this diff</a>
-                  <a class="btn" href="#" data-summary-copy="{_h(summary_text)}">Copy summary</a>
+            if st.get("status") == "error":
+                err = st.get("error") or {}
+                body_html = f"""
+                <div class="card" style="margin-top:6px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                    <strong>Step Failed</strong>
+                    <span class="badge badge-bad">error</span>
+                  </div>
+                  <div class="muted" style="margin-top:6px;line-height:1.6;">
+                    {_h(err.get("message", "An error occurred during this step."))}
+                  </div>
                 </div>
-              </div>
-              <div id="{summary_id}" class="muted" style="margin-top:6px;line-height:1.6;display:none;">{_h(summary_text)}</div>
-            </div>
-            {summary_note}
-            {_render_keys('Added keys', added_keys, added_trunc, 'added')}
-            {_render_keys('Removed keys', removed_keys, removed_trunc, 'removed')}
-            {_render_keys('Changed keys', changed_keys, changed_trunc, 'changed')}
-            """
+                """
+            else:
+                body_html = f"""
+                <div class="card" style="margin-top:6px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                    <strong>Summary</strong>
+                    <div class="chips">
+                      <span class="badge badge-info">plain English</span>
+                      <a class="btn" href="#" data-summary-toggle="{summary_id}">Summarize this diff</a>
+                      <a class="btn" href="#" data-summary-copy="{_h(summary_text)}">Copy summary</a>
+                    </div>
+                  </div>
+                  <div id="{summary_id}" class="muted" style="margin-top:6px;line-height:1.6;display:none;">{_h(summary_text)}</div>
+                </div>
+                {summary_note}
+                {_render_keys('Added keys', added_keys, added_trunc, 'added')}
+                {_render_keys('Removed keys', removed_keys, removed_trunc, 'removed')}
+                {_render_keys('Changed keys', changed_keys, changed_trunc, 'changed')}
+                """
 
         step_cards.append(
             f"""
