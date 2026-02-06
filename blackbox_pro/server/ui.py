@@ -502,20 +502,16 @@ def ui_home(
     role = getattr(request.state, "auth_role", None)
     store = get_store()
 
-    # Discover projects/datasets/runs by listing keys.
-    keys = _list_keys_safe(store, "")
-    projects = _segment_keys(keys, "")
+    # Discover projects/datasets/runs using directory listing to avoid files like _audit.log.jsonl
+    projects = store.list_dirs("")
     sel_project = project or (projects[0] if projects else "")
 
-    ds_keys = _list_keys_safe(store, sel_project) if sel_project else []
-    datasets = _segment_keys(ds_keys, sel_project)
+    datasets = store.list_dirs(sel_project) if sel_project else []
     sel_dataset = dataset or (datasets[0] if datasets else "")
 
     runs: List[str] = []
     if sel_project and sel_dataset:
-        base = f"{sel_project}/{sel_dataset}"
-        base_keys = _list_keys_safe(store, base)
-        runs = _segment_keys(base_keys, base)
+        runs = store.list_dirs(f"{sel_project}/{sel_dataset}")
 
     sel_run = run_id or (runs[-1] if runs else "")
 
@@ -601,7 +597,7 @@ def ui_home(
             </div>
 
             <div class="field" style="min-width:140px;">
-              <button class="btn" type="submit" style="height:42px;cursor:pointer;">Open</button>
+              <button class="btn" type="submit" style="height:42px;cursor:pointer;" {'disabled' if not sel_run else ''}>Open</button>
             </div>
           </div>
         </form>
