@@ -642,9 +642,9 @@ def ui_home(
 @router.get("/ui", response_class=HTMLResponse, include_in_schema=False)
 def ui(
     request: Request,
-    project: str = Query(...),
-    dataset: str = Query(...),
-    run_id: str = Query(...),
+    project: Optional[str] = Query(None),
+    dataset: Optional[str] = Query(None),
+    run_id: Optional[str] = Query(None),
     view: str = Query("summary", pattern="^(summary|verbose)$"),
 ) -> HTMLResponse:
     has_session = bool(request.cookies.get("bbx_token"))
@@ -652,6 +652,8 @@ def ui(
     if not (has_session or has_query):
         return _login_form()
     role = getattr(request.state, "auth_role", None)
+    if not project or not dataset or not run_id:
+        return RedirectResponse(url="/ui/home", status_code=302)
     store = get_store()
     prefix = f"{project}/{dataset}/{run_id}"
 
