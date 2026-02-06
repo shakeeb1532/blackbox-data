@@ -100,6 +100,12 @@ def test_ui_docs(client_run):
     assert r.status_code == 200
 
 
+def test_ui_wizard_demo(client_run):
+    client, _, token, _ = client_run
+    r = client.get(f"/ui/wizard?token={token}")
+    assert r.status_code in (200, 302)
+
+
 def test_ui_metrics(client_run):
     client, _, token, _ = client_run
     r = client.get(f"/ui/metrics?token={token}")
