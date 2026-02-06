@@ -518,6 +518,21 @@ def ui_home(
 
     sel_run = run_id or (runs[-1] if runs else "")
 
+    # Demo gallery: find demo runs by tag if available.
+    demo_cards: list[str] = []
+    for rid in runs[-10:]:
+        try:
+            run_obj = store.get_json(f"{sel_project}/{sel_dataset}/{rid}/run.json")
+        except Exception:
+            continue
+        tags = run_obj.get("tags") or {}
+        if str(tags.get("demo", "")).lower() != "true":
+            continue
+        label = tags.get("scenario") or "standard"
+        demo_cards.append(
+            f"<a class='btn' data-token-link href='/ui?project={_h(sel_project)}&dataset={_h(sel_dataset)}&run_id={_h(rid)}'>Demo: {_h(label)}</a>"
+        )
+
     auth_action = '<a class="btn" href="/ui/logout">Logout</a>' if has_session else '<a class="btn" href="/ui/login">Login</a>'
     body = f"""
     <div class="topbar">
@@ -603,6 +618,16 @@ def ui_home(
         <div class="chips">
           <span class="chip">Tip: bookmark /ui/home</span>
           <span class="chip">Next: export evidence</span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h2>Demo Gallery</h2>
+        <div class="muted" style="font-size:12.5px;line-height:1.7;">
+          Quick links to demo scenarios (high churn, failure, tamper).
+        </div>
+        <div class="chips" style="margin-top:10px;">
+          {''.join(demo_cards) if demo_cards else '<span class="chip">Run demo to populate gallery</span>'}
         </div>
       </div>
 
