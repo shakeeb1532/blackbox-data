@@ -538,6 +538,18 @@ def ui_home(
     </div>
 
     <div class="wrap content">
+      <div class="card" style="margin-bottom:14px;">
+        <h2>Start here</h2>
+        <div class="muted" style="font-size:12.5px;line-height:1.7;">
+          1) Sign in once with your token.<br/>
+          2) Generate a demo run (button below).<br/>
+          3) Click <strong>Open</strong> to view the report.
+        </div>
+        <div class="chips" style="margin-top:10px;">
+          <a class="btn" href="/ui/wizard">Run Demo</a>
+          <a class="btn" href="/ui/docs">What do I see?</a>
+        </div>
+      </div>
       <div class="card">
         <h2>Open a run</h2>
 
@@ -590,7 +602,7 @@ def ui_home(
 
         <div class="chips">
           <span class="chip">Tip: bookmark /ui/home</span>
-          <span class="chip">Next: auth + export</span>
+          <span class="chip">Next: export evidence</span>
         </div>
       </div>
 
@@ -872,11 +884,12 @@ def ui(
     </div>
 
     <div class="card" style="margin-top:14px;">
-      <h2>How to Read This</h2>
+      <h2>Plain‑English Guide</h2>
       <div class="muted" style="font-size:12px;line-height:1.6;">
-        <strong>Schema:</strong> column additions/removals and dtype changes. <br/>
-        <strong>Rows:</strong> added/removed/changed primary keys. <br/>
-        <strong>Hints:</strong> badges explain why a diff is summarized or skipped.
+        <strong>Schema:</strong> new/removed columns or type changes. <br/>
+        <strong>Rows:</strong> records added/removed/changed. <br/>
+        <strong>Attention badge:</strong> something changed here. <br/>
+        <strong>Verified:</strong> evidence chain is intact (tamper‑evident).<br/>
       </div>
       <div class="chips" style="margin-top:12px;">
         <span class="badge badge-info">summary_only_high_churn</span>

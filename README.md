@@ -95,6 +95,8 @@ Pro UI login:
 http://127.0.0.1:8088/ui/login
 ```
 
+Non‑technical demo guide: `docs/NON_TECH_QUICKSTART.md`
+
 Warehouse adapters:
 ```bash
 python3 -m pip install -e ".[pro,warehouse]"

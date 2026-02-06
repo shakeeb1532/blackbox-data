@@ -14,6 +14,7 @@ Entry points:
 - `INTEGRATION_GUIDE.md` (non-technical)
 - `GITHUB_ACTIONS.md` (CI integration example)
 - `CYBERSECURITY.md` (security positioning)
+- `NON_TECH_QUICKSTART.md` (no-code demo)
 
 Screenshots live in `docs/screens/`.
 
